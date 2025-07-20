@@ -50,9 +50,28 @@ export default function ContactsPage() {
 
     try {
       if (isNewContact) {
+        // Get user's organization_id from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!profile?.organization_id) {
+          toast({
+            title: 'Fout',
+            description: 'Geen organisatie gevonden',
+            variant: 'destructive',
+          });
+          return;
+        }
+
         const { error } = await supabase
           .from('contacts')
-          .insert(formData);
+          .insert({
+            ...formData,
+            organization_id: profile.organization_id,
+          });
 
         if (error) throw error;
         
