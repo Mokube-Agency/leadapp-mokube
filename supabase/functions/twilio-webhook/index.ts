@@ -13,8 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const SUPABASE_URL = "https://ipjrhuijvgchbezcjhsk.supabase.co";
-    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
     const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
