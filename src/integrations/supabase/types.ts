@@ -29,7 +29,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_message_at?: string | null
-          organization_id: string
+          organization_id?: string
           updated_at?: string | null
           whatsapp_number: string
         }
