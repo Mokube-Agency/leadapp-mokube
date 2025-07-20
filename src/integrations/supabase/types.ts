@@ -14,7 +14,151 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          created_at: string | null
+          full_name: string | null
+          id: string
+          last_message_at: string | null
+          organization_id: string
+          updated_at: string | null
+          whatsapp_number: string
+        }
+        Insert: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          organization_id: string
+          updated_at?: string | null
+          whatsapp_number: string
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          organization_id?: string
+          updated_at?: string | null
+          whatsapp_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string | null
+          contact_id: string
+          created_at: string | null
+          id: number
+          organization_id: string
+          role: Database["public"]["Enums"]["role_enum"]
+          twilio_sid: string | null
+        }
+        Insert: {
+          body?: string | null
+          contact_id: string
+          created_at?: string | null
+          id?: number
+          organization_id: string
+          role: Database["public"]["Enums"]["role_enum"]
+          twilio_sid?: string | null
+        }
+        Update: {
+          body?: string | null
+          contact_id?: string
+          created_at?: string | null
+          id?: number
+          organization_id?: string
+          role?: Database["public"]["Enums"]["role_enum"]
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          ai_paused: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          stripe_customer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_paused?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_paused?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string
+          organization_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          organization_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          organization_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +167,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      role_enum: "user" | "agent" | "human" | "system"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +294,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      role_enum: ["user", "agent", "human", "system"],
+    },
   },
 } as const
