@@ -4,7 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Chat from "./pages/Chat";
+import ContactsPage from "./pages/ContactsPage";
+import AgentPage from "./pages/AgentPage";
 import NotFound from "./pages/NotFound";
+import AppShell from "./layouts/AppShell";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { AuthPage } from "@/components/auth/AuthPage";
 
@@ -27,8 +30,12 @@ function AuthenticatedApp() {
 
   return (
     <Routes>
-      <Route path="/chat" element={<Chat />} />
-      <Route path="/" element={<Navigate to="/chat" replace />} />
+      <Route path="/" element={<AppShell />}>
+        <Route index element={<Navigate to="/chats" replace />} />
+        <Route path="chats" element={<Chat />} />
+        <Route path="contacts" element={<ContactsPage />} />
+        <Route path="agent" element={<AgentPage />} />
+      </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
