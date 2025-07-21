@@ -1,1 +1,7 @@
 project_id = "ipjrhuijvgchbezcjhsk"
+
+[functions.configure-sandbox]
+verify_jwt = false
+
+[functions.twilio-webhook]
+verify_jwt = false
