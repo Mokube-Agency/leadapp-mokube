@@ -75,10 +75,18 @@ serve(async (req) => {
     // 3) Send to Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
     
-    // Ensure WhatsApp number format
-    const toNumber = contact.whatsapp_number.startsWith('whatsapp:') 
-      ? contact.whatsapp_number 
-      : `whatsapp:${contact.whatsapp_number}`;
+    // For sandbox testing, we need to ensure proper international format
+    let toNumber = contact.whatsapp_number;
+    
+    // Convert Dutch mobile numbers to international format
+    if (toNumber.startsWith('06')) {
+      toNumber = '+31' + toNumber.substring(1);
+    }
+    
+    // Ensure WhatsApp prefix
+    if (!toNumber.startsWith('whatsapp:')) {
+      toNumber = `whatsapp:${toNumber}`;
+    }
     
     const fromNumber = TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:')
       ? TWILIO_WHATSAPP_NUMBER
