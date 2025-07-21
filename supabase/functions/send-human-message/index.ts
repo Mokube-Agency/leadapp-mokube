@@ -57,9 +57,21 @@ serve(async (req) => {
 
     // 3) Send to Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+    
+    // Ensure WhatsApp number format
+    const toNumber = contact.whatsapp_number.startsWith('whatsapp:') 
+      ? contact.whatsapp_number 
+      : `whatsapp:${contact.whatsapp_number}`;
+    
+    const fromNumber = TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:')
+      ? TWILIO_WHATSAPP_NUMBER
+      : `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
+
+    console.log('Sending to Twilio:', { from: fromNumber, to: toNumber, body: text });
+
     const params = new URLSearchParams({
-      From: TWILIO_WHATSAPP_NUMBER,
-      To: contact.whatsapp_number,
+      From: fromNumber,
+      To: toNumber,
       Body: text,
     });
 
@@ -68,6 +80,7 @@ serve(async (req) => {
       body: params,
       headers: {
         Authorization: "Basic " + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+        "Content-Type": "application/x-www-form-urlencoded",
       },
     });
 
