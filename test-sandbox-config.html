@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configureer Twilio Sandbox</title>
+</head>
+<body>
+    <h1>Twilio Sandbox Configuratie</h1>
+    <button onclick="configureSandbox()">Configureer Sandbox</button>
+    <div id="result"></div>
+
+    <script>
+        async function configureSandbox() {
+            try {
+                const response = await fetch('https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/configure-sandbox', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Resultaat:</h3>
+                    <p>Status: ${response.status}</p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Fout:</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
