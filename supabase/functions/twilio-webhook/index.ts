@@ -32,6 +32,7 @@ serve(async (req) => {
     const body = form.get("Body")?.toString() || "";
     const twilioSid = form.get("MessageSid")?.toString();
 
+    console.log('=== TWILIO WEBHOOK CALLED ===');
     console.log('Received webhook:', { from, body, twilioSid });
 
     if (!from) {
