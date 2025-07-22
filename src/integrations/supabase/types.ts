@@ -61,6 +61,7 @@ export type Database = {
           organization_id: string
           role: Database["public"]["Enums"]["role_enum"]
           twilio_sid: string | null
+          twilio_status: string | null
         }
         Insert: {
           body?: string | null
@@ -70,6 +71,7 @@ export type Database = {
           organization_id: string
           role: Database["public"]["Enums"]["role_enum"]
           twilio_sid?: string | null
+          twilio_status?: string | null
         }
         Update: {
           body?: string | null
@@ -79,6 +81,7 @@ export type Database = {
           organization_id?: string
           role?: Database["public"]["Enums"]["role_enum"]
           twilio_sid?: string | null
+          twilio_status?: string | null
         }
         Relationships: [
           {
