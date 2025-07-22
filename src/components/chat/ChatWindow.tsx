@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bot, Play, Pause } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Contact, Message, Organization } from '@/types/database';
+import { Bot } from 'lucide-react';
+import { Contact, Message } from '@/types/database';
 import { MessageInput } from './MessageInput';
 import MessageList from './MessageList';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +15,6 @@ export function ChatWindow({ contact }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const { toast } = useToast();
   
   const PAGE_SIZE = 50;
@@ -50,24 +48,10 @@ export function ChatWindow({ contact }: ChatWindowProps) {
     }
   };
 
-  // Load organization data
-  const loadOrganization = async () => {
-    const { data } = await supabase
-      .from("organizations")
-      .select("*")
-      .eq("id", contact.organization_id)
-      .single();
-    
-    if (data) {
-      setOrganization(data);
-    }
-  };
-
   // Initial load
   useEffect(() => {
     if (contact.id) {
       loadMessages(true);
-      loadOrganization();
     }
   }, [contact.id]);
 
@@ -123,47 +107,6 @@ export function ChatWindow({ contact }: ChatWindowProps) {
     }
   };
 
-  const handleToggleAI = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: "Fout",
-          description: "Je moet ingelogd zijn",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const response = await supabase.functions.invoke('toggle-ai-pause', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-
-      if (response.error) {
-        throw response.error;
-      }
-
-      toast({
-        title: "Succes",
-        description: response.data.message
-      });
-      
-      // Reload organization data to get updated AI status
-      loadOrganization();
-    } catch (error) {
-      console.error('Error toggling AI:', error);
-      toast({
-        title: "Fout",
-        description: "Kon AI-status niet wijzigen",
-        variant: "destructive"
-      });
-    }
-  };
-
-
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -176,25 +119,6 @@ export function ChatWindow({ contact }: ChatWindowProps) {
             {contact.whatsapp_number.replace('whatsapp:', '')}
           </p>
         </div>
-        
-        <Button
-          variant={organization?.ai_paused ? "destructive" : "default"}
-          size="sm"
-          onClick={handleToggleAI}
-          className="flex items-center gap-2"
-        >
-          {organization?.ai_paused ? (
-            <>
-              <Play className="h-4 w-4" />
-              AI Gepauzeerd
-            </>
-          ) : (
-            <>
-              <Pause className="h-4 w-4" />
-              AI Actief
-            </>
-          )}
-        </Button>
       </div>
 
       {/* Messages */}
