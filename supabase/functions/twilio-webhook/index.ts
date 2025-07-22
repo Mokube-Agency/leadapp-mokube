@@ -33,7 +33,13 @@ serve(async (req) => {
     const twilioSid = form.get("MessageSid")?.toString();
 
     console.log('=== TWILIO WEBHOOK CALLED ===');
-    console.log('Received webhook:', { from, body, twilioSid });
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    console.log('Form data entries:');
+    for (const [key, value] of form.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
+    console.log('Parsed values:', { from, body, twilioSid });
 
     if (!from) {
       return new Response('Missing From parameter', { status: 400, headers: corsHeaders });
