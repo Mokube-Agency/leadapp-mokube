@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/x/sift/mod.ts";
+import { encode } from "https://deno.land/std@0.207.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,14 +13,26 @@ serve(async (req) => {
   }
 
   try {
-    const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const {
+      TWILIO_ACCOUNT_SID,
+      TWILIO_AUTH_TOKEN,
+      SUPABASE_URL,
+    } = Deno.env.toObject();
 
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !SUPABASE_URL) {
-      console.error('Missing required environment variables');
-      return new Response(JSON.stringify({ error: 'Missing configuration' }), {
-        status: 500,
+    if (!TWILIO_ACCOUNT_SID?.startsWith("AC")) {
+      return new Response(JSON.stringify({ 
+        error: "TWILIO_ACCOUNT_SID moet met AC beginnen" 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!TWILIO_AUTH_TOKEN || !SUPABASE_URL) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required environment variables' 
+      }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -28,7 +41,6 @@ serve(async (req) => {
 
     console.log('Configuring Twilio Sandbox with webhook:', TWILIO_WEBHOOK_URL);
 
-    // Configure Twilio Sandbox
     const url = `https://preview.twilio.com/WhatsApp/Sandboxes/${TWILIO_ACCOUNT_SID}`;
     const params = new URLSearchParams({
       InboundMessageUrl: TWILIO_WEBHOOK_URL,
@@ -39,7 +51,7 @@ serve(async (req) => {
       method: "POST",
       body: params,
       headers: {
-        Authorization: "Basic " + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+        Authorization: "Basic " + encode(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
@@ -51,7 +63,7 @@ serve(async (req) => {
         error: 'Failed to configure sandbox', 
         details: errorText 
       }), {
-        status: 500,
+        status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -70,7 +82,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error configuring sandbox:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
