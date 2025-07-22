@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useContacts } from '@/hooks/useContacts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ export default function ContactsPage() {
   const [active, setActive] = useState<Contact | null>(null);
   const [isNewContact, setIsNewContact] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<"time" | "alpha">("time");
   const [formData, setFormData] = useState({
     full_name: '',
     whatsapp_number: '',
@@ -29,6 +31,17 @@ export default function ContactsPage() {
     contact.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     contact.whatsapp_number.includes(searchTerm)
   ) || [];
+
+  const sortedContacts = useMemo(() => {
+    if (sortBy === "alpha") {
+      return [...filteredContacts].sort((a, b) => 
+        (a.full_name || "").localeCompare(b.full_name || "")
+      );
+    }
+    return [...filteredContacts].sort((a, b) => 
+      (b.last_message_at || "").localeCompare(a.last_message_at || "")
+    );
+  }, [filteredContacts, sortBy]);
 
   const handleNewContact = () => {
     setFormData({ full_name: '', whatsapp_number: '' });
@@ -115,14 +128,28 @@ export default function ContactsPage() {
     <div className="h-full flex flex-col">
       <header className="p-4 border-b flex items-center gap-3">
         <h2 className="text-lg font-semibold flex-1">Contacten</h2>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Zoek contacten..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-64"
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="sort-select" className="text-sm whitespace-nowrap">Sorteer op:</Label>
+            <Select value={sortBy} onValueChange={(value: "time" | "alpha") => setSortBy(value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="time">Tijd</SelectItem>
+                <SelectItem value="alpha">Alfabetisch</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek contacten..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-64"
+            />
+          </div>
         </div>
         <Button onClick={handleNewContact}>
           <Plus className="h-4 w-4 mr-2" />
@@ -131,13 +158,13 @@ export default function ContactsPage() {
       </header>
 
       <div className="flex-1 overflow-auto p-4">
-        {filteredContacts.length === 0 ? (
+        {sortedContacts.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             {contacts?.length === 0 ? 'Nog geen contacten' : 'Geen contacten gevonden'}
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredContacts.map(contact => (
+            {sortedContacts.map(contact => (
               <div
                 key={contact.id}
                 className="p-4 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
