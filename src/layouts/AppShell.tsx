@@ -36,18 +36,20 @@ export default function AppShell() {
         <div className="mt-auto text-sm text-muted-foreground">v0.1.0</div>
       </aside>
       <main className="flex-1 overflow-hidden relative">
-        <div className="absolute top-4 right-4 z-10">
-          <Button
-            onClick={toggleAiPause}
-            disabled={loading}
-            variant={aiPaused ? "default" : "destructive"}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-            {aiPaused ? "AI Activeren" : "AI Pauzeren"}
-          </Button>
-        </div>
+        {pathname !== '/contacts' && (
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              onClick={toggleAiPause}
+              disabled={loading}
+              variant={aiPaused ? "default" : "destructive"}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              {aiPaused ? "AI Activeren" : "AI Pauzeren"}
+            </Button>
+          </div>
+        )}
         <Outlet />
       </main>
     </div>
