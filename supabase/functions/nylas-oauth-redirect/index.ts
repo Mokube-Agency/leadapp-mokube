@@ -104,6 +104,17 @@ serve(async (req) => {
         return new Response(`Database error: ${error.message}`, { status: 500 });
       }
 
+      // Update profile to mark calendar as connected
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ nylas_connected: true })
+        .eq("user_id", state);
+
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+        return new Response(`Profile update error: ${profileError.message}`, { status: 500 });
+      }
+
       // Redirect terug naar settings pagina met success
         return new Response(null, {
           status: 302,

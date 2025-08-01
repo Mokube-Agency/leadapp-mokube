@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, User, Mail } from "lucide-react";
+import { Calendar, User, Mail, Unlink } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,38 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error initiating calendar connection:', error);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (!user) return;
+
+    try {
+      const response = await supabase.functions.invoke('disconnect-calendar', {
+        body: { user_id: user.id }
+      });
+
+      if (response.error) {
+        console.error('Error disconnecting calendar:', response.error);
+        toast({
+          title: "Fout",
+          description: "Er is een fout opgetreden bij het ontkoppelen van de agenda.",
+          variant: "destructive",
+        });
+      } else {
+        setProfile(prev => ({ ...prev, nylas_connected: false }));
+        toast({
+          title: "Succes",
+          description: "Agenda succesvol ontkoppeld.",
+        });
+      }
+    } catch (error) {
+      console.error('Error disconnecting calendar:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het ontkoppelen van de agenda.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -123,13 +157,34 @@ export default function SettingsPage() {
               Verbind je agenda om afspraken te synchroniseren en te beheren vanuit Leadapp.
             </p>
             
-            <Button
-              onClick={handleConnectCalendar}
-              className="flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Verbind Agenda
-            </Button>
+            {profile?.nylas_connected ? (
+              <div className="space-y-2">
+                <Button
+                  disabled
+                  variant="secondary"
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Gekoppeld
+                </Button>
+                <Button
+                  onClick={handleDisconnectCalendar}
+                  variant="destructive"
+                  className="flex items-center gap-2"
+                >
+                  <Unlink className="h-4 w-4" />
+                  Ontkoppel Agenda
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={handleConnectCalendar}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Verbind Agenda
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

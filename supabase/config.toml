@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.twilio-status-callback]
 verify_jwt = false
+
+[functions.disconnect-calendar]
+verify_jwt = false
