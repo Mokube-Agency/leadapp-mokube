@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Search, MessageCircle } from 'lucide-react';
+import { Search, MessageCircle, MoreVertical, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useSupabaseRealtime } from '@/hooks/useSupabaseRealtime';
 import { Contact } from '@/types/database';
 import { cn } from '@/lib/utils';
@@ -9,9 +11,12 @@ import { cn } from '@/lib/utils';
 interface ContactsListProps {
   activeContactId?: string;
   onSelectContact: (contact: Contact) => void;
+  sortBy: 'time-asc' | 'time-desc' | 'alpha-asc' | 'alpha-desc';
+  onSortChange: (sortBy: 'time-asc' | 'time-desc' | 'alpha-asc' | 'alpha-desc') => void;
+  onDeleteConversation: () => Promise<void>;
 }
 
-export function ContactsList({ activeContactId, onSelectContact }: ContactsListProps) {
+export function ContactsList({ activeContactId, onSelectContact, sortBy, onSortChange, onDeleteConversation }: ContactsListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   
   const { data: contacts, loading } = useSupabaseRealtime<Contact>(
@@ -51,7 +56,59 @@ export function ContactsList({ activeContactId, onSelectContact }: ContactsListP
   return (
     <aside className="w-80 border-r bg-muted/30 flex flex-col">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold mb-3">Chatgesprekken</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Chatgesprekken</h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-background border shadow-lg z-50">
+              <DropdownMenuItem 
+                onClick={() => onSortChange('time-desc')}
+                className="flex items-center gap-2"
+              >
+                <ArrowDownUp className="h-4 w-4" />
+                Nieuw → Oud
+                {sortBy === 'time-desc' && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onSortChange('time-asc')}
+                className="flex items-center gap-2"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                Oud → Nieuw
+                {sortBy === 'time-asc' && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onSortChange('alpha-asc')}
+                className="flex items-center gap-2"
+              >
+                <SortAsc className="h-4 w-4" />
+                A → Z
+                {sortBy === 'alpha-asc' && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onSortChange('alpha-desc')}
+                className="flex items-center gap-2"
+              >
+                <SortDesc className="h-4 w-4" />
+                Z → A
+                {sortBy === 'alpha-desc' && <span className="ml-auto text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={onDeleteConversation}
+                className="flex items-center gap-2 text-destructive focus:text-destructive"
+                disabled={!activeContactId}
+              >
+                <Trash2 className="h-4 w-4" />
+                Verwijder gesprek
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

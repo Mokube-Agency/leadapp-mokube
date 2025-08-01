@@ -79,94 +79,39 @@ export default function Chat() {
   };
 
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex relative">
+      {/* Fixed AI Control Button */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+            aiPaused 
+              ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
+              : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+          }`}>
+            {aiPaused ? 'AI Gepauzeerd' : 'AI Actief'}
+          </div>
+          <Button
+            onClick={toggleAiPause}
+            variant={aiPaused ? "default" : "outline"}
+            size="sm"
+            className="flex items-center gap-2 shadow-lg"
+          >
+            {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {aiPaused ? "Activeren" : "Pauzeren"}
+          </Button>
+        </div>
+      </div>
+
       <ContactsList
         activeContactId={activeContact?.id}
         onSelectContact={setActiveContact}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        onDeleteConversation={handleDeleteConversation}
       />
       
       {activeContact ? (
         <div className="flex-1 flex flex-col">
-          {/* AI Status Block */}
-          <div className="p-4 border-b bg-muted/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-medium">
-                    {activeContact.full_name?.charAt(0)?.toUpperCase() || activeContact.whatsapp_number.slice(-2)}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-medium">{activeContact.full_name || activeContact.whatsapp_number}</h3>
-                  <p className="text-sm text-muted-foreground">{activeContact.whatsapp_number}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  aiPaused 
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
-                    : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
-                }`}>
-                  {aiPaused ? 'AI Gepauzeerd' : 'AI Actief'}
-                </div>
-                <Button
-                  onClick={toggleAiPause}
-                  variant={aiPaused ? "default" : "outline"}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                  {aiPaused ? "Activeren" : "Pauzeren"}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sort and Action Controls */}
-          <div className="flex gap-2 p-4 border-b bg-background">
-            <Button
-              onClick={() => setSortBy('time-desc')}
-              variant={sortBy === 'time-desc' ? 'default' : 'outline'}
-              size="sm"
-            >
-              <ArrowDownUp className="h-4 w-4 mr-1" />
-              Nieuw→Oud
-            </Button>
-            <Button
-              onClick={() => setSortBy('time-asc')}
-              variant={sortBy === 'time-asc' ? 'default' : 'outline'}
-              size="sm"
-            >
-              <ArrowUpDown className="h-4 w-4 mr-1" />
-              Oud→Nieuw
-            </Button>
-            <Button
-              onClick={() => setSortBy('alpha-asc')}
-              variant={sortBy === 'alpha-asc' ? 'default' : 'outline'}
-              size="sm"
-            >
-              <SortAsc className="h-4 w-4 mr-1" />
-              A→Z
-            </Button>
-            <Button
-              onClick={() => setSortBy('alpha-desc')}
-              variant={sortBy === 'alpha-desc' ? 'default' : 'outline'}
-              size="sm"
-            >
-              <SortDesc className="h-4 w-4 mr-1" />
-              Z→A
-            </Button>
-            <Button
-              onClick={handleDeleteConversation}
-              variant="destructive"
-              size="sm"
-              className="ml-auto"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Verwijder gesprek
-            </Button>
-          </div>
-
           <ChatWindow contact={activeContact} overrideMessages={sortedMessages} onMessagesChange={setMessages} />
         </div>
       ) : (
