@@ -74,14 +74,16 @@ export default function CalendarPage() {
         .select('nylas_grant_id, email_address, provider')
         .eq('user_id', user?.id)
         .eq('is_active', true)
-        .single();
+        .limit(1);
 
       if (error) {
         console.error('Error loading Nylas account:', error);
         return;
       }
 
-      setNylasAccount(data);
+      if (data && data.length > 0) {
+        setNylasAccount(data[0]);
+      }
     } catch (error) {
       console.error('Error loading Nylas account:', error);
     } finally {
