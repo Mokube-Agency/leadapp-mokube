@@ -31,11 +31,11 @@ serve(async (req) => {
       const tokenResponse = await fetch("https://api.us.nylas.com/v3/connect/token", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${Deno.env.get("NYLAS_CLIENT_SECRET")}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           client_id: Deno.env.get("NYLAS_CLIENT_ID"),
+          client_secret: Deno.env.get("NYLAS_CLIENT_SECRET"),
           grant_type: "authorization_code",
           code: code,
           redirect_uri: `https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/nylas-oauth-redirect`
