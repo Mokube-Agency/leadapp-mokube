@@ -3,7 +3,16 @@ project_id = "ipjrhuijvgchbezcjhsk"
 [functions.configure-sandbox]
 verify_jwt = false
 
+[functions.create-event]
+verify_jwt = true
+
 [functions.delete-conversation]
+verify_jwt = true
+
+[functions.get-calendars]
+verify_jwt = true
+
+[functions.get-events]
 verify_jwt = true
 
 [functions.nylas-oauth-redirect]

@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { MessageCircle, Users, Bot, Play, Pause, Settings } from "lucide-react";
+import { MessageCircle, Users, Bot, Calendar, Play, Pause, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAiPause } from "@/hooks/useAiPause";
 
@@ -11,6 +11,7 @@ export default function AppShell() {
     { href: "/chats", label: "Chats", icon: MessageCircle },
     { href: "/contacts", label: "Contacten", icon: Users },
     { href: "/agent", label: "AI-agent", icon: Bot },
+    { href: "/calendar", label: "Kalender", icon: Calendar },
   ];
 
   return (
