@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Chat from "./pages/Chat";
 import ContactsPage from "./pages/ContactsPage";
 import AgentPage from "./pages/AgentPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import AppShell from "./layouts/AppShell";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
@@ -35,6 +36,7 @@ function AuthenticatedApp() {
         <Route path="chats" element={<Chat />} />
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="agent" element={<AgentPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
