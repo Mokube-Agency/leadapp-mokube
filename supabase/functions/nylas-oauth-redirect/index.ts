@@ -38,7 +38,7 @@ serve(async (req) => {
           client_id: Deno.env.get("NYLAS_CLIENT_ID"),
           grant_type: "authorization_code",
           code: code,
-          redirect_uri: `${url.origin}/functions/v1/nylas-oauth-redirect`
+          redirect_uri: `https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/nylas-oauth-redirect`
         })
       });
 
@@ -105,13 +105,13 @@ serve(async (req) => {
       }
 
       // Redirect terug naar settings pagina met success
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': `${url.origin}/settings?connected=success`
-        }
-      });
+        return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            'Location': `https://daf82932-4ab5-4493-977d-249a1fbf6e33.lovableproject.com/settings?connected=success`
+          }
+        });
 
     } catch (error) {
       console.error("OAuth callback error:", error);
@@ -128,7 +128,8 @@ serve(async (req) => {
         return new Response("Missing user_id", { status: 400 });
       }
 
-      const redirectUri = `${new URL(req.url).origin}/functions/v1/nylas-oauth-redirect`;
+      
+      const redirectUri = `https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/nylas-oauth-redirect`;
       
       // Nylas OAuth URL voor hosted authentication
       const authUrl = new URL("https://api.us.nylas.com/v3/connect/auth");
