@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.delete-conversation]
 verify_jwt = true
 
+[functions.nylas-oauth-redirect]
+verify_jwt = false
+
 [functions.twilio-webhook]
 verify_jwt = false
 

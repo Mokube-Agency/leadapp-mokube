@@ -36,9 +36,22 @@ export default function SettingsPage() {
     loadProfile();
   }, [user]);
 
-  const handleConnectCalendar = () => {
-    // This will redirect to the Nylas OAuth flow
-    window.location.href = `/functions/nylas-oauth-redirect?state=${user?.id}`;
+  const handleConnectCalendar = async () => {
+    if (!user) return;
+
+    try {
+      const response = await supabase.functions.invoke('nylas-oauth-redirect', {
+        body: { user_id: user.id }
+      });
+
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else {
+        console.error('No auth URL received:', response);
+      }
+    } catch (error) {
+      console.error('Error initiating calendar connection:', error);
+    }
   };
 
   if (loading) {

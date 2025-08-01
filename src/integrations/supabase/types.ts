@@ -100,6 +100,57 @@ export type Database = {
           },
         ]
       }
+      nylas_accounts: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          created_at: string
+          email_address: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          nylas_grant_id: string | null
+          organization_id: string
+          provider: string | null
+          provider_email_address: string | null
+          refresh_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          email_address?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          nylas_grant_id?: string | null
+          organization_id: string
+          provider?: string | null
+          provider_email_address?: string | null
+          refresh_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          email_address?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          nylas_grant_id?: string | null
+          organization_id?: string
+          provider?: string | null
+          provider_email_address?: string | null
+          refresh_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           ai_paused: boolean | null
