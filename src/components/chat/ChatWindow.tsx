@@ -8,9 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ChatWindowProps {
   contact: Contact;
+  overrideMessages?: Message[];
+  onMessagesChange?: (messages: Message[]) => void;
 }
 
-export function ChatWindow({ contact }: ChatWindowProps) {
+export function ChatWindow({ contact, overrideMessages, onMessagesChange }: ChatWindowProps) {
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [page, setPage] = useState(0);
@@ -38,9 +40,12 @@ export function ChatWindow({ contact }: ChatWindowProps) {
       const newMessages = data.reverse(); // Reverse to show oldest first
       if (initial) {
         setMessages(newMessages);
+        onMessagesChange?.(newMessages);
         setPage(1);
       } else {
-        setMessages(prev => [...newMessages, ...prev]);
+        const updatedMessages = [...newMessages, ...messages];
+        setMessages(updatedMessages);
+        onMessagesChange?.(updatedMessages);
         setPage(prev => prev + 1);
       }
       
@@ -70,7 +75,9 @@ export function ChatWindow({ contact }: ChatWindowProps) {
           filter: `contact_id=eq.${contact.id}` 
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          const newMessages = [...messages, payload.new as Message];
+          setMessages(newMessages);
+          onMessagesChange?.(newMessages);
         }
       )
       .subscribe();
@@ -109,20 +116,9 @@ export function ChatWindow({ contact }: ChatWindowProps) {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <div className="border-b p-4 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">
-            {contact.full_name || contact.whatsapp_number.replace('whatsapp:', '')}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {contact.whatsapp_number.replace('whatsapp:', '')}
-          </p>
-        </div>
-      </div>
 
       {/* Messages */}
-      {messages.length === 0 ? (
+      {(overrideMessages || messages).length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -131,7 +127,7 @@ export function ChatWindow({ contact }: ChatWindowProps) {
         </div>
       ) : (
         <MessageList 
-          messages={messages} 
+          messages={overrideMessages || messages} 
           onLoadMore={() => loadMessages(false)}
           hasMore={hasMore}
         />
