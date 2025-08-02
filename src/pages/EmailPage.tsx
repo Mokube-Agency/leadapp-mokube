@@ -8,19 +8,28 @@ export default function EmailPage() {
   const [emails, setEmails] = useState([]);
   const [error, setError] = useState(null);
 
-  // Fallback-fetch bij mount
+  // ---------- fetch via Edge Function ----------
   useEffect(() => {
     if (!user) return;
     
     (async () => {
-      const { data, error } = await supabase
-        .from("email_messages")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("received_at", { ascending: false });
-      console.log("Fetched emails:", data, "Error:", error);
-      if (error) setError(error.message);
-      else setEmails(data);
+      try {
+        const response = await supabase.functions.invoke('list-emails', {
+          body: { user_id: user.id }
+        });
+        
+        if (response.error) {
+          console.error("Edge function error:", response.error);
+          setError("Fout bij ophalen e-mails.");
+          return;
+        }
+        
+        console.log("Nylas emails:", response.data);
+        setEmails(response.data || []);
+      } catch (e) {
+        console.error("Fetch failed:", e);
+        setError("Fout bij ophalen e-mails.");
+      }
     })();
   }, [user]);
 

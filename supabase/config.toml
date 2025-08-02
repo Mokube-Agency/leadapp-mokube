@@ -15,6 +15,9 @@ verify_jwt = true
 [functions.get-events]
 verify_jwt = true
 
+[functions.list-emails]
+verify_jwt = true
+
 [functions.nylas-oauth-redirect]
 verify_jwt = false
 
