@@ -324,7 +324,7 @@ serve(async (req) => {
     }
 
     console.log('Successfully processed webhook and sent reply');
-    return new Response("OK", { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
 
   } catch (error) {
     console.error('Webhook error:', error);
