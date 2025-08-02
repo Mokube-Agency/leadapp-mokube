@@ -23,7 +23,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { grant_id, calendar_id, ...eventData } = body;
+    const { grant_id, calendar_id, title, date, start_time, end_time, ...eventData } = body;
     
     console.log("Creating event with grant_id:", grant_id, "calendar_id:", calendar_id);
     
@@ -59,8 +59,12 @@ serve(async (req) => {
       return new Response("Calendar connection is no longer valid. Please reconnect your calendar.", { status: 401 });
     }
 
+    // Convert date and time to timestamps
+    const startTs = Math.floor(new Date(`${date}T${start_time}`).getTime() / 1000);
+    const endTs = Math.floor(new Date(`${date}T${end_time}`).getTime() / 1000);
+
     const response = await fetch(
-      `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id},
+      `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id}`,
       {
         method: 'POST',
         headers: {
@@ -68,14 +72,14 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JJSON.stringify({
+        body: JSON.stringify({
           title,
           when: { start_time: startTs, end_time: endTs }
         })
       }
     );
-    const json = await res.json();
-    console.log("Nylas create-event response", res.status, json);
+    
+    console.log("Nylas create-event response", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
