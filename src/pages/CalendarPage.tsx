@@ -251,14 +251,14 @@ export default function CalendarPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-auto">
+            <div className="h-[600px] overflow-auto">
               <div className="grid grid-cols-8 min-w-[800px]">
                 {/* Header row */}
-                <div className="p-2 border-b border-r text-sm font-medium"></div>
+                <div className="p-2 border-b border-r text-sm font-medium bg-background sticky top-0 z-20"></div>
                 {days.map(day => (
                   <div 
                     key={day.format('YYYY-MM-DD')} 
-                    className={`p-2 border-b border-r text-center text-sm font-medium ${
+                    className={`p-2 border-b border-r text-center text-sm font-medium bg-background sticky top-0 z-20 ${
                       day.isSame(dayjs(), 'day') ? 'bg-primary/5 text-primary' : ''
                     }`}
                   >
@@ -270,7 +270,7 @@ export default function CalendarPage() {
                 {/* Time slots */}
                 {hours.map(hour => (
                   <div key={hour} className="contents">
-                    <div className="p-2 border-b border-r text-right text-xs text-muted-foreground font-medium">
+                    <div className="p-2 border-b border-r text-right text-xs text-muted-foreground font-medium bg-background sticky left-0 z-10">
                       {hour.toString().padStart(2, '0')}:00
                     </div>
                     {days.map(day => {
