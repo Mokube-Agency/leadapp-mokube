@@ -31,7 +31,7 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
       .from("messages")
       .select("*")
       .eq("contact_id", contact.id)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true }) // Load in ascending order (oldest first)
       .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
 
     if (error) {
@@ -40,13 +40,12 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
     }
 
     if (data) {
-      const newMessages = data.reverse(); // Reverse to show oldest first
       if (initial) {
-        setMessages(newMessages);
-        onMessagesChange?.(newMessages);
+        setMessages(data);
+        onMessagesChange?.(data);
         setPage(1);
       } else {
-        const updatedMessages = [...newMessages, ...messages];
+        const updatedMessages = [...data, ...messages];
         setMessages(updatedMessages);
         onMessagesChange?.(updatedMessages);
         setPage(prev => prev + 1);
@@ -78,9 +77,11 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
           filter: `contact_id=eq.${contact.id}` 
         },
         (payload) => {
-          const newMessages = [...messages, payload.new as Message];
-          setMessages(newMessages);
-          onMessagesChange?.(newMessages);
+          setMessages(prevMessages => {
+            const newMessages = [...prevMessages, payload.new as Message];
+            onMessagesChange?.(newMessages);
+            return newMessages;
+          });
         }
       )
       .subscribe();
@@ -88,7 +89,15 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [contact.id]);
+  }, [contact.id, onMessagesChange]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    const messageContainer = document.getElementById("message-list");
+    if (messageContainer) {
+      messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+  }, [messages, overrideMessages]);
 
   const handleSendMessage = async (message: string) => {
     setSending(true);
@@ -153,7 +162,7 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div id="message-list" className="flex-1 overflow-y-auto">
           <MessageList 
             messages={overrideMessages || messages} 
             onLoadMore={() => loadMessages(false)}
