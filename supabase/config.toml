@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.handle-auth-callback]
 verify_jwt = false
+
+[functions.send-invite]
+verify_jwt = true

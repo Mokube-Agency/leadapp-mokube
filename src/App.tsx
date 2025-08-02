@@ -9,6 +9,7 @@ import AgentPage from "./pages/AgentPage";
 import CalendarPage from "./pages/CalendarPage";
 import EmailPage from "./pages/EmailPage";
 import SettingsPage from "./pages/SettingsPage";
+import OrganizationPage from "./pages/OrganizationPage";
 import NotFound from "./pages/NotFound";
 import AppShell from "./layouts/AppShell";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
@@ -40,6 +41,7 @@ function AuthenticatedApp() {
         <Route path="agent" element={<AgentPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="emails" element={<EmailPage />} />
+        <Route path="organization" element={<OrganizationPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
