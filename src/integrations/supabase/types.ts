@@ -181,27 +181,33 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          default_calendar_id: string | null
           display_name: string | null
           id: string
           nylas_connected: boolean | null
+          nylas_grant_id: string | null
           organization_id: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          default_calendar_id?: string | null
           display_name?: string | null
           id?: string
           nylas_connected?: boolean | null
+          nylas_grant_id?: string | null
           organization_id: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
+          default_calendar_id?: string | null
           display_name?: string | null
           id?: string
           nylas_connected?: boolean | null
+          nylas_grant_id?: string | null
           organization_id?: string
           updated_at?: string | null
           user_id?: string

@@ -104,16 +104,52 @@ serve(async (req) => {
         return new Response(`Database error: ${error.message}`, { status: 500 });
       }
 
-      // Update profile to mark calendar as connected
+      // Get available calendars and set default
+      console.log("📅 Fetching calendars for grant:", tokenData.grant_id);
+      let defaultCalendarId = null;
+      
+      if (tokenData.access_token) {
+        const calendarResponse = await fetch(
+          `https://api.us.nylas.com/v3/grants/${tokenData.grant_id}/calendars`,
+          {
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get("NYLAS_CLIENT_SECRET")}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        if (calendarResponse.ok) {
+          const calendarData = await calendarResponse.json();
+          console.log("📅 Available calendars:", calendarData);
+          
+          if (calendarData.data && calendarData.data.length > 0) {
+            // Use the primary calendar if available, otherwise the first one
+            const primaryCalendar = calendarData.data.find(cal => cal.is_primary);
+            defaultCalendarId = primaryCalendar ? primaryCalendar.id : calendarData.data[0].id;
+            console.log("📅 Selected default calendar:", defaultCalendarId);
+          }
+        } else {
+          console.error("Failed to fetch calendars:", await calendarResponse.text());
+        }
+      }
+
+      // Update profile to mark calendar as connected and save grant_id + default_calendar_id
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ nylas_connected: true })
+        .update({ 
+          nylas_connected: true,
+          nylas_grant_id: tokenData.grant_id,
+          default_calendar_id: defaultCalendarId
+        })
         .eq("user_id", state);
 
       if (profileError) {
         console.error("Profile update error:", profileError);
         return new Response(`Profile update error: ${profileError.message}`, { status: 500 });
       }
+
+      console.log("✅ OAuth flow completed successfully for user:", state);
 
       // Redirect terug naar settings pagina met success
         return new Response(null, {
