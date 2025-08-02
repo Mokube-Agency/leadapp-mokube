@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -125,7 +126,75 @@ serve(async (req) => {
       return new Response("AI paused", { headers: corsHeaders });
     }
 
-    // 4) Generate AI response
+    // 4) Get conversation history for context
+    const { data: messages } = await supabase
+      .from("messages")
+      .select("role, body")
+      .eq("contact_id", contact.id)
+      .order("created_at", { ascending: true })
+      .limit(10);
+
+    // Build conversation context
+    const conversationMessages = [
+      { 
+        role: 'system', 
+        content: `Je bent een vriendelijke klantenservice agent voor een onderhoud- en renovatiebedrijf. 
+        
+        Je kunt de volgende functies gebruiken:
+        - Beantwoord vragen over onze diensten
+        - Geef advies over onderhoud
+        - Help klanten met het inplannen van afspraken
+        
+        Als iemand een afspraak wil inplannen, vraag dan naar:
+        - De gewenste datum (YYYY-MM-DD formaat)
+        - Starttijd (HH:MM formaat)
+        - Eindtijd (HH:MM formaat)
+        
+        Antwoord in het Nederlands en houd het kort en professioneel.
+        De contactpersoon heet: ${contact.full_name}`
+      }
+    ];
+
+    // Add conversation history
+    if (messages) {
+      messages.forEach(msg => {
+        conversationMessages.push({
+          role: msg.role === 'agent' ? 'assistant' : 'user',
+          content: msg.body || ''
+        });
+      });
+    }
+
+    // Add current message
+    conversationMessages.push({ role: 'user', content: body });
+
+    // Define function for appointment scheduling
+    const functions = [
+      {
+        name: "create_appointment",
+        description: "Maak een nieuwe kalenderafspraak aan wanneer de klant een afspraak wil inplannen",
+        parameters: {
+          type: "object",
+          properties: {
+            date: { 
+              type: "string", 
+              description: "Datum van de afspraak in YYYY-MM-DD formaat" 
+            },
+            start_time: { 
+              type: "string", 
+              description: "Starttijd in HH:MM formaat (24-uurs)" 
+            },
+            end_time: { 
+              type: "string", 
+              description: "Eindtijd in HH:MM formaat (24-uurs)" 
+            }
+          },
+          required: ["date", "start_time", "end_time"]
+        }
+      }
+    ];
+
+    // 5) Generate AI response with function calling
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -134,13 +203,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: `Je bent een vriendelijke klantenservice agent voor een onderhoud- en renovatiebedrijf. Beantwoord vragen over onze diensten, geef advies over onderhoud en help klanten met het inplannen van afspraken. Antwoord in het Nederlands en houd het kort en professioneel.`
-          },
-          { role: 'user', content: body }
-        ],
+        messages: conversationMessages,
+        functions,
+        function_call: "auto",
         max_tokens: 500,
         temperature: 0.7
       }),
@@ -152,9 +217,76 @@ serve(async (req) => {
     }
 
     const aiData = await openAIResponse.json();
-    const reply = aiData.choices[0]?.message?.content || "Sorry, ik kon geen antwoord genereren.";
+    const message = aiData.choices[0]?.message;
 
-    // 5) Store AI response
+    let reply = "Sorry, ik kon geen antwoord genereren.";
+
+    // Check if AI wants to call a function
+    if (message?.function_call) {
+      const functionName = message.function_call.name;
+      
+      if (functionName === "create_appointment") {
+        try {
+          const args = JSON.parse(message.function_call.arguments);
+          
+          // Get user's Nylas account for appointment creation
+          const { data: nylasAccount } = await supabase
+            .from("nylas_accounts")
+            .select("nylas_grant_id")
+            .eq("organization_id", contact.organization_id)
+            .eq("is_active", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (nylasAccount?.nylas_grant_id) {
+            // Get available calendars
+            const { data: calendars } = await supabase.functions.invoke('get-calendars', {
+              body: { grant_id: nylasAccount.nylas_grant_id }
+            });
+
+            if (calendars && calendars.length > 0) {
+              // Use first available calendar
+              const calendarId = calendars[0].id;
+              
+              // Create the appointment
+              const startDateTime = new Date(`${args.date}T${args.start_time}:00`);
+              const endDateTime = new Date(`${args.date}T${args.end_time}:00`);
+              
+              const { data: eventData, error: eventError } = await supabase.functions.invoke('create-event', {
+                body: {
+                  grant_id: nylasAccount.nylas_grant_id,
+                  calendar_id: calendarId,
+                  title: `Afspraak: ${contact.full_name}`,
+                  when: {
+                    start_time: Math.floor(startDateTime.getTime() / 1000),
+                    end_time: Math.floor(endDateTime.getTime() / 1000)
+                  }
+                }
+              });
+
+              if (eventError) {
+                console.error('Error creating event:', eventError);
+                reply = "Sorry, er ging iets mis bij het inplannen van je afspraak. Probeer het later opnieuw.";
+              } else {
+                reply = `Perfect! Je afspraak is ingepland voor ${args.date} van ${args.start_time} tot ${args.end_time}. We zien je dan graag!`;
+              }
+            } else {
+              reply = "Sorry, er zijn geen kalenders beschikbaar om een afspraak in te plannen.";
+            }
+          } else {
+            reply = "Sorry, er is geen kalender gekoppeld om afspraken in te plannen.";
+          }
+        } catch (error) {
+          console.error('Error processing appointment:', error);
+          reply = "Sorry, er ging iets mis bij het verwerken van je afspraak.";
+        }
+      }
+    } else {
+      // Regular AI response
+      reply = message?.content || "Sorry, ik kon geen antwoord genereren.";
+    }
+
+    // 6) Store AI response
     const { error: aiMessageError } = await supabase
       .from("messages")
       .insert({
@@ -168,7 +300,7 @@ serve(async (req) => {
       console.error('Error storing AI message:', aiMessageError);
     }
 
-    // 6) Send response via Twilio
+    // 7) Send response via Twilio
     const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
     const params = new URLSearchParams({
       From: TWILIO_WHATSAPP_NUMBER || '',
