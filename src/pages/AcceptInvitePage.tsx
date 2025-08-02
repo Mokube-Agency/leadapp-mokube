@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -86,32 +86,13 @@ export default function AcceptInvitePage() {
 
     setAccepting(true);
     try {
-      // Update user's profile with new organization
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ organization_id: invite.organization_id })
-        .eq('user_id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Mark invitation as accepted
-      const { error: inviteError } = await supabase
-        .from('organization_invites')
-        .update({ status: 'accepted' })
-        .eq('id', invite.id);
-
-      if (inviteError) throw inviteError;
-
-      // Update user metadata
-      const { error: metadataError } = await supabase.functions.invoke('update-user-metadata', {
-        body: {
-          userId: user.id,
-          organizationId: invite.organization_id
-        }
+      // Use the accept-invite edge function
+      const { error } = await supabase.functions.invoke('accept-invite', {
+        body: { invite_id: invite.id }
       });
 
-      if (metadataError) {
-        console.error('Error updating user metadata:', metadataError);
+      if (error) {
+        throw new Error(error.message || 'Failed to accept invite');
       }
 
       toast({
@@ -119,13 +100,13 @@ export default function AcceptInvitePage() {
         description: `Je bent nu lid van ${invite.organization.name}`,
       });
 
-      // Redirect to main app
-      navigate('/chats');
+      // Redirect to organization page
+      navigate('/organization');
     } catch (err) {
       console.error('Error accepting invite:', err);
       toast({
         title: "Fout",
-        description: "Kon uitnodiging niet accepteren",
+        description: err instanceof Error ? err.message : "Kon uitnodiging niet accepteren",
         variant: "destructive",
       });
     } finally {
