@@ -48,24 +48,34 @@ export default function EmailPage() {
     <div className="p-6 overflow-auto h-full">
       <h1 className="text-2xl font-bold mb-4">E-mailberichten</h1>
       <ul className="space-y-4">
-        {emails.map((email, index) => (
-          <li key={email.id || index} className="border-b pb-2">
-            <div className="flex justify-between">
-              <span className="font-semibold">{email.subject || "(Geen onderwerp)"}</span>
-              <span className="text-sm text-gray-500">
-                {email.date ? dayjs(email.date * 1000).format("DD MMM YYYY HH:mm") : "Onbekende datum"}
-              </span>
-            </div>
-            <div className="text-sm text-gray-700 mt-1">
-              <strong>Van:</strong> {email.from?.[0]?.email || "Onbekend"}
-              <br />
-              <strong>Aan:</strong> {email.to?.[0]?.email || "Onbekend"}
-            </div>
-            <div className="mt-2 text-sm">
-              {email.snippet || email.body || "Geen inhoud beschikbaar"}
-            </div>
-          </li>
-        ))}
+        {emails.map((email, index) => {
+          // Handle both Gmail API format and legacy format
+          const subject = email.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || email.subject || "(Geen onderwerp)";
+          const fromHeader = email.payload?.headers?.find((h: any) => h.name === 'From')?.value || email.from?.[0]?.email || "Onbekend";
+          const toHeader = email.payload?.headers?.find((h: any) => h.name === 'To')?.value || email.to?.[0]?.email || "Onbekend";
+          const dateHeader = email.payload?.headers?.find((h: any) => h.name === 'Date')?.value;
+          const snippet = email.snippet || email.body || "Geen inhoud beschikbaar";
+          
+          return (
+            <li key={email.id || index} className="border-b pb-2">
+              <div className="flex justify-between">
+                <span className="font-semibold">{subject}</span>
+                <span className="text-sm text-gray-500">
+                  {dateHeader ? dayjs(dateHeader).format("DD MMM YYYY HH:mm") : 
+                   email.date ? dayjs(email.date * 1000).format("DD MMM YYYY HH:mm") : "Onbekende datum"}
+                </span>
+              </div>
+              <div className="text-sm text-gray-700 mt-1">
+                <strong>Van:</strong> {fromHeader}
+                <br />
+                <strong>Aan:</strong> {toHeader}
+              </div>
+              <div className="mt-2 text-sm">
+                {snippet}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

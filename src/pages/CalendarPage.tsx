@@ -66,112 +66,87 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (user) {
-      loadNylasAccount();
+      loadGoogleTokens();
     }
   }, [user]);
 
   useEffect(() => {
-    if (nylasAccount?.nylas_grant_id) {
-      loadCalendars();
+    if (user) {
+      loadCalendarEvents();
     }
-  }, [nylasAccount]);
+  }, [user, currentWeek]);
 
-  useEffect(() => {
-    if (calendars.length > 0) {
-      loadWeekEvents();
-    }
-  }, [calendars, currentWeek]);
-
-  const loadNylasAccount = async () => {
+  const loadGoogleTokens = async () => {
     try {
       const { data, error } = await supabase
-        .from('nylas_accounts')
-        .select('nylas_grant_id, email_address, provider')
+        .from('profiles')
+        .select('google_refresh_token')
         .eq('user_id', user?.id)
-        .eq('is_active', true)
-        .limit(1);
+        .single();
 
       if (error) {
-        console.error('Error loading Nylas account:', error);
+        console.error('Error loading Google tokens:', error);
         return;
       }
 
-      if (data && data.length > 0) {
-        setNylasAccount(data[0]);
+      if (data?.google_refresh_token) {
+        setNylasAccount({ nylas_grant_id: 'google', email_address: user?.email });
       }
     } catch (error) {
-      console.error('Error loading Nylas account:', error);
+      console.error('Error loading Google tokens:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCalendars = async () => {
-    if (!nylasAccount?.nylas_grant_id) return;
-
-    try {
-      const { data, error } = await supabase.functions.invoke('get-calendars', {
-        body: { grant_id: nylasAccount.nylas_grant_id }
-      });
-
-      if (error) {
-        console.error('Error loading calendars:', error);
-        toast({
-          title: 'Fout',
-          description: 'Kon kalenders niet laden',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      setCalendars(data || []);
-    } catch (error) {
-      console.error('Error loading calendars:', error);
-      toast({
-        title: 'Fout',
-        description: 'Kon kalenders niet laden',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const loadWeekEvents = async () => {
-    if (!nylasAccount?.nylas_grant_id || calendars.length === 0) return;
+  const loadCalendarEvents = async () => {
+    if (!user) return;
 
     setEventsLoading(true);
 
     try {
-      const startOfWeek = currentWeek.startOf('isoWeek').unix();
-      const endOfWeek = currentWeek.endOf('isoWeek').unix();
+      console.log('🔴 [CalendarPage] Calling calendar-fetch with user_id:', user.id);
       
-      // Load events from all calendars
-      const allEvents: Event[] = [];
+      const response = await supabase.functions.invoke('calendar-fetch', {
+        body: { user_id: user.id }
+      });
       
-      for (const calendar of calendars) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-events', {
-            body: { 
-              grant_id: nylasAccount.nylas_grant_id,
-              calendar_id: calendar.id,
-              starts_after: startOfWeek,
-              ends_before: endOfWeek
-            }
-          });
-
-          if (!error && data) {
-            allEvents.push(...data);
-          }
-        } catch (error) {
-          console.error(`Error loading events for calendar ${calendar.id}:`, error);
-        }
+      console.log('🔴 [CalendarPage] Response received:', response);
+      
+      if (response.error) {
+        console.error('🔴 [CalendarPage] Edge function error:', response.error);
+        toast({
+          title: 'Fout',
+          description: 'Kon kalender events niet laden',
+          variant: 'destructive'
+        });
+        return;
       }
-
-      setEvents(allEvents);
+      
+      console.log('✅ [CalendarPage] Google calendar events:', response.data);
+      
+      // Transform Google Calendar events to our format
+      const transformedEvents = (response.data || []).map((event: any) => ({
+        id: event.id,
+        title: event.summary || 'Geen titel',
+        description: event.description,
+        when: {
+          start_time: event.start?.dateTime ? new Date(event.start.dateTime).getTime() / 1000 : 
+                     event.start?.date ? new Date(event.start.date).getTime() / 1000 : 
+                     Date.now() / 1000,
+          end_time: event.end?.dateTime ? new Date(event.end.dateTime).getTime() / 1000 : 
+                   event.end?.date ? new Date(event.end.date).getTime() / 1000 : 
+                   (Date.now() / 1000) + 3600
+        },
+        location: event.location
+      }));
+      
+      setEvents(transformedEvents);
     } catch (error) {
-      console.error('Error loading week events:', error);
+      console.error('🔴 [CalendarPage] Fetch failed:', error);
       toast({
         title: 'Fout',
-        description: 'Kon events niet laden',
+        description: 'Kon kalender events niet laden',
         variant: 'destructive'
       });
     } finally {
@@ -247,7 +222,7 @@ export default function CalendarPage() {
       setShowModal(false);
 
       // Refresh events
-      loadWeekEvents();
+      loadCalendarEvents();
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
@@ -276,7 +251,7 @@ export default function CalendarPage() {
               Kalender
             </CardTitle>
             <CardDescription>
-              Je hebt nog geen kalender verbonden. Ga naar instellingen om je kalender te verbinden.
+              Je hebt nog geen Google kalender verbonden. Log in met Google om je kalender te verbinden.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -385,7 +360,7 @@ export default function CalendarPage() {
           <Button onClick={() => navigateWeek('next')} variant="outline" size="sm">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button onClick={loadWeekEvents} variant="outline" size="sm">
+          <Button onClick={loadCalendarEvents} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Ververs
           </Button>
