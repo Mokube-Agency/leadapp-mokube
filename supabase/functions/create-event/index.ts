@@ -25,7 +25,15 @@ serve(async (req) => {
     const body = await req.json();
     const { grant_id, calendar_id, title, date, start_time, end_time, ...eventData } = body;
     
-    console.log("Creating event with grant_id:", grant_id, "calendar_id:", calendar_id);
+    console.log("🚀 [create-event] Creating event with data:", {
+      grant_id,
+      calendar_id,
+      title,
+      date,
+      start_time,
+      end_time,
+      ...eventData
+    });
     
     if (!grant_id || !calendar_id) {
       return new Response("grant_id and calendar_id are required", { status: 400 });
@@ -37,6 +45,7 @@ serve(async (req) => {
     }
 
     // First check if the grant is still valid by testing the calendars endpoint
+    console.log("🔍 [create-event] Validating grant:", grant_id);
     const testResponse = await fetch(
       `https://api.us.nylas.com/v3/grants/${grant_id}/calendars`,
       {
@@ -47,8 +56,11 @@ serve(async (req) => {
       }
     );
 
+    console.log("🔍 [create-event] Grant validation response:", testResponse.status);
+
     if (!testResponse.ok) {
-      console.error("Grant validation failed:", await testResponse.text());
+      const errorText = await testResponse.text();
+      console.error("❌ [create-event] Grant validation failed:", errorText);
       
       // Mark the Nylas account as inactive if grant is invalid
       await supabase
@@ -56,13 +68,19 @@ serve(async (req) => {
         .update({ is_active: false })
         .eq('nylas_grant_id', grant_id);
         
-      return new Response("Calendar connection is no longer valid. Please reconnect your calendar.", { status: 401 });
+      return new Response("Calendar connection is no longer valid. Please reconnect your calendar.", { 
+        status: 401,
+        headers: corsHeaders
+      });
     }
 
     // Convert date and time to timestamps
     const startTs = Math.floor(new Date(`${date}T${start_time}`).getTime() / 1000);
     const endTs = Math.floor(new Date(`${date}T${end_time}`).getTime() / 1000);
+    
+    console.log("🕐 [create-event] Converted timestamps:", { startTs, endTs });
 
+    console.log("🚀 [create-event] Making Nylas API call...");
     const response = await fetch(
       `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id}`,
       {
@@ -79,11 +97,11 @@ serve(async (req) => {
       }
     );
     
-    console.log("Nylas create-event response", response.status);
+    console.log("🚀 [create-event] Nylas API response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Nylas API error:", errorText);
+      console.error("❌ [create-event] Nylas API error:", errorText);
       
       // If this is also a 404, mark account as inactive
       if (response.status === 404) {
@@ -93,18 +111,24 @@ serve(async (req) => {
           .eq('nylas_grant_id', grant_id);
       }
       
-      return new Response(`Nylas API error: ${errorText}`, { status: response.status });
+      return new Response(`Nylas API error: ${errorText}`, { 
+        status: response.status,
+        headers: corsHeaders
+      });
     }
 
     const data = await response.json();
-    console.log("Event created successfully:", data);
+    console.log("✅ [create-event] Event created successfully:", data);
     
     return new Response(JSON.stringify(data.data || data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error("Create event error:", error);
-    return new Response(`Error: ${error.message}`, { status: 500 });
+    console.error("❌ [create-event] Unexpected error:", error);
+    return new Response(`Error: ${error.message}`, { 
+      status: 500,
+      headers: corsHeaders
+    });
   }
 });
