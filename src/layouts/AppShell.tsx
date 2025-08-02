@@ -1,11 +1,8 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { MessageCircle, Users, Bot, Calendar, Play, Pause, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAiPause } from "@/hooks/useAiPause";
+import { MessageCircle, Users, Bot, Calendar, Settings } from "lucide-react";
 
 export default function AppShell() {
   const { pathname } = useLocation();
-  const { aiPaused, loading, toggleAiPause } = useAiPause();
   
   const nav = [
     { href: "/chats", label: "Chats", icon: MessageCircle },
@@ -49,20 +46,6 @@ export default function AppShell() {
         </div>
       </aside>
       <main className="flex-1 overflow-hidden relative">
-        {pathname !== '/contacts' && (
-          <div className="absolute top-4 right-4 z-10">
-            <Button
-              onClick={toggleAiPause}
-              disabled={loading}
-              variant={aiPaused ? "default" : "destructive"}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-              {aiPaused ? "AI Activeren" : "AI Pauzeren"}
-            </Button>
-          </div>
-        )}
         <Outlet />
       </main>
     </div>
