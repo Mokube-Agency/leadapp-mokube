@@ -3,6 +3,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +55,14 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(dayjs());
+  
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDate, setNewEventDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [newEventStartTime, setNewEventStartTime] = useState('09:00');
+  const [newEventEndTime, setNewEventEndTime] = useState('10:00');
+  const [selectedCalendarId, setSelectedCalendarId] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -186,6 +198,66 @@ export default function CalendarPage() {
     });
   };
 
+  const handleCreateEvent = async () => {
+    if (!nylasAccount?.nylas_grant_id || !selectedCalendarId || !newEventTitle) {
+      toast({
+        title: 'Fout',
+        description: 'Vul alle velden in',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const startDateTime = dayjs(`${newEventDate}T${newEventStartTime}`);
+      const endDateTime = dayjs(`${newEventDate}T${newEventEndTime}`);
+
+      const { data, error } = await supabase.functions.invoke('create-event', {
+        body: {
+          grant_id: nylasAccount.nylas_grant_id,
+          calendar_id: selectedCalendarId,
+          title: newEventTitle,
+          when: {
+            start_time: startDateTime.unix(),
+            end_time: endDateTime.unix()
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: 'Fout',
+          description: 'Kon afspraak niet aanmaken',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      toast({
+        title: 'Succes',
+        description: 'Afspraak is aangemaakt'
+      });
+
+      // Reset form
+      setNewEventTitle('');
+      setNewEventDate(dayjs().format('YYYY-MM-DD'));
+      setNewEventStartTime('09:00');
+      setNewEventEndTime('10:00');
+      setSelectedCalendarId('');
+      setShowModal(false);
+
+      // Refresh events
+      loadWeekEvents();
+    } catch (error) {
+      console.error('Error creating event:', error);
+      toast({
+        title: 'Fout',
+        description: 'Kon afspraak niet aanmaken',
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -228,6 +300,82 @@ export default function CalendarPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog open={showModal} onOpenChange={setShowModal}>
+            <DialogTrigger asChild>
+              <Button variant="default" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Afspraak toevoegen
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Nieuwe afspraak</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Titel</Label>
+                  <Input
+                    id="title"
+                    value={newEventTitle}
+                    onChange={(e) => setNewEventTitle(e.target.value)}
+                    placeholder="Titel van de afspraak"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="date">Datum</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={newEventDate}
+                    onChange={(e) => setNewEventDate(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="start-time">Starttijd</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={newEventStartTime}
+                      onChange={(e) => setNewEventStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="end-time">Eindtijd</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={newEventEndTime}
+                      onChange={(e) => setNewEventEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="calendar">Kalender</Label>
+                  <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer een kalender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {calendars.map((calendar) => (
+                        <SelectItem key={calendar.id} value={calendar.id}>
+                          {calendar.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowModal(false)}>
+                    Annuleren
+                  </Button>
+                  <Button onClick={handleCreateEvent}>
+                    Aanmaken
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button onClick={() => navigateWeek('prev')} variant="outline" size="sm">
             <ChevronLeft className="h-4 w-4" />
           </Button>
