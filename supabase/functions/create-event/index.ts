@@ -60,7 +60,7 @@ serve(async (req) => {
     }
 
     const response = await fetch(
-      `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id}`,
+      `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id},
       {
         method: 'POST',
         headers: {
@@ -68,8 +68,14 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(eventData)
+        body: JJSON.stringify({
+          title,
+          when: { start_time: startTs, end_time: endTs }
+        })
+
       }
+      const json = await res.json();
+      console.log("Nylas create-event response", res.status, json);
     );
 
     if (!response.ok) {
