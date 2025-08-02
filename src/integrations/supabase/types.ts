@@ -301,7 +301,11 @@ export type Database = {
           created_at: string | null
           default_calendar_id: string | null
           display_name: string | null
+          google_access_token: string | null
+          google_refresh_token: string | null
           id: string
+          microsoft_access_token: string | null
+          microsoft_refresh_token: string | null
           nylas_connected: boolean | null
           nylas_grant_id: string | null
           organization_id: string
@@ -312,7 +316,11 @@ export type Database = {
           created_at?: string | null
           default_calendar_id?: string | null
           display_name?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
           id?: string
+          microsoft_access_token?: string | null
+          microsoft_refresh_token?: string | null
           nylas_connected?: boolean | null
           nylas_grant_id?: string | null
           organization_id: string
@@ -323,7 +331,11 @@ export type Database = {
           created_at?: string | null
           default_calendar_id?: string | null
           display_name?: string | null
+          google_access_token?: string | null
+          google_refresh_token?: string | null
           id?: string
+          microsoft_access_token?: string | null
+          microsoft_refresh_token?: string | null
           nylas_connected?: boolean | null
           nylas_grant_id?: string | null
           organization_id?: string
