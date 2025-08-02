@@ -145,7 +145,8 @@ export default function SettingsPage() {
           variant: "destructive",
         });
       } else {
-        setProfile(prev => prev ? { ...prev, nylas_connected: false } : null);
+        // Refresh profile data from database to ensure accurate state
+        await loadProfile();
         setCalendars([]);
         setGrantId(null);
         toast({
