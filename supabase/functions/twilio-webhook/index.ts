@@ -242,8 +242,13 @@ serve(async (req) => {
             .select("nylas_grant_id, default_calendar_id")
             .eq("organization_id", contact.organization_id)
             .eq("nylas_connected", true)
+            .not("nylas_grant_id", "is", null)
+            .not("default_calendar_id", "is", null)
             .limit(1)
             .maybeSingle();
+
+          console.log("📞 Getting calendars for grant:", profileWithNylas?.nylas_grant_id);
+          console.log("📅 Using calendar:", profileWithNylas?.default_calendar_id);
 
           if (!profileWithNylas?.nylas_grant_id || !profileWithNylas?.default_calendar_id) {
             console.error("❌ No Nylas connection or default calendar found for organization:", contact.organization_id);
