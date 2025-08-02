@@ -121,9 +121,6 @@ export default function EmailPage() {
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center space-y-2">
                 <p className="text-muted-foreground">Geen e-mailberichten gevonden</p>
-                <p className="text-sm text-muted-foreground">
-                  E-mailberichten verschijnen hier zodra ze zijn gesynchroniseerd via Nylas
-                </p>
               </div>
             </CardContent>
           </Card>
