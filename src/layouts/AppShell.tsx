@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { MessageCircle, Users, Bot, Calendar, Settings } from "lucide-react";
+import { MessageCircle, Users, Bot, Calendar, Mail, Settings } from "lucide-react";
 
 export default function AppShell() {
   const { pathname } = useLocation();
@@ -9,6 +9,7 @@ export default function AppShell() {
     { href: "/contacts", label: "Contacten", icon: Users },
     { href: "/agent", label: "AI-agent", icon: Bot },
     { href: "/calendar", label: "Kalender", icon: Calendar },
+    { href: "/emails", label: "E-mail", icon: Mail },
   ];
 
   return (

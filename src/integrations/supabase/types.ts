@@ -52,6 +52,51 @@ export type Database = {
           },
         ]
       }
+      email_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          from_address: string
+          id: string
+          is_read: boolean | null
+          nylas_message_id: string
+          organization_id: string
+          received_at: string
+          subject: string | null
+          to_address: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          from_address: string
+          id?: string
+          is_read?: boolean | null
+          nylas_message_id: string
+          organization_id: string
+          received_at: string
+          subject?: string | null
+          to_address: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          from_address?: string
+          id?: string
+          is_read?: boolean | null
+          nylas_message_id?: string
+          organization_id?: string
+          received_at?: string
+          subject?: string | null
+          to_address?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           body: string | null
