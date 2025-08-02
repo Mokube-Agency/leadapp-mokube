@@ -72,11 +72,10 @@ serve(async (req) => {
           title,
           when: { start_time: startTs, end_time: endTs }
         })
-
       }
-      const json = await res.json();
-      console.log("Nylas create-event response", res.status, json);
     );
+    const json = await res.json();
+    console.log("Nylas create-event response", res.status, json);
 
     if (!response.ok) {
       const errorText = await response.text();
