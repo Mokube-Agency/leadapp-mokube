@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
   try {
@@ -23,7 +23,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { grant_id, calendar_id, title, date, start_time, end_time, ...eventData } = body;
+    const { grant_id, calendar_id, title, date, start_time, end_time } = body;
     
     console.log("🚀 [create-event] Creating event with data:", {
       grant_id,
@@ -31,17 +31,32 @@ serve(async (req) => {
       title,
       date,
       start_time,
-      end_time,
-      ...eventData
+      end_time
     });
     
-    if (!grant_id || !calendar_id) {
-      return new Response("grant_id and calendar_id are required", { status: 400 });
+    // Valideer alle verplichte velden
+    if (!grant_id || !calendar_id || !title || !date || !start_time || !end_time) {
+      console.error("❌ [create-event] Missing required fields:", { 
+        grant_id: !!grant_id, 
+        calendar_id: !!calendar_id, 
+        title: !!title, 
+        date: !!date, 
+        start_time: !!start_time, 
+        end_time: !!end_time 
+      });
+      return new Response("Missing required fields: grant_id, calendar_id, title, date, start_time, end_time", { 
+        status: 400, 
+        headers: corsHeaders 
+      });
     }
 
     const nylasApiKey = Deno.env.get("NYLAS_CLIENT_SECRET");
     if (!nylasApiKey) {
-      return new Response("Nylas API key not configured", { status: 500 });
+      console.error("❌ [create-event] Nylas API key not configured");
+      return new Response("Nylas API key not configured", { 
+        status: 500, 
+        headers: corsHeaders 
+      });
     }
 
     // First check if the grant is still valid by testing the calendars endpoint
@@ -57,7 +72,6 @@ serve(async (req) => {
     );
 
     console.log("🔍 [create-event] Grant validation response:", testResponse.status);
-
     if (!testResponse.ok) {
       const errorText = await testResponse.text();
       console.error("❌ [create-event] Grant validation failed:", errorText);
@@ -74,34 +88,44 @@ serve(async (req) => {
       });
     }
 
-    // Convert date and time to timestamps
-    const startTs = Math.floor(new Date(`${date}T${start_time}`).getTime() / 1000);
-    const endTs = Math.floor(new Date(`${date}T${end_time}`).getTime() / 1000);
+    // Bereken UNIX timestamps
+    const startTs = Math.floor(new Date(`${date}T${start_time}:00`).getTime() / 1000);
+    const endTs = Math.floor(new Date(`${date}T${end_time}:00`).getTime() / 1000);
     
     console.log("🕐 [create-event] Converted timestamps:", { startTs, endTs });
 
-    console.log("🚀 [create-event] Making Nylas API call...");
-    const response = await fetch(
-      `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${nylasApiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          title,
-          when: { start_time: startTs, end_time: endTs }
-        })
+    // Verplicht `when`-object volgens Nylas v3 API
+    const payload = {
+      calendar_id,
+      title,
+      when: {
+        start_time: startTs,
+        end_time: endTs
       }
-    );
+    };
+
+    console.log("📦 [create-event] Payload for Nylas API:", JSON.stringify(payload, null, 2));
+
+    console.log("🚀 [create-event] Making Nylas API call...");
+    const url = `https://api.us.nylas.com/v3/grants/${grant_id}/events?calendar_id=${calendar_id}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${nylasApiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
     
     console.log("🚀 [create-event] Nylas API response status:", response.status);
 
+    const responseData = await response.json();
+    console.log("🚀 [create-event] Nylas API response body:", JSON.stringify(responseData, null, 2));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ [create-event] Nylas API error:", errorText);
+      console.error("❌ [create-event] Nylas API error:", responseData);
       
       // If this is also a 404, mark account as inactive
       if (response.status === 404) {
@@ -111,24 +135,31 @@ serve(async (req) => {
           .eq('nylas_grant_id', grant_id);
       }
       
-      return new Response(`Nylas API error: ${errorText}`, { 
+      return new Response(JSON.stringify({ 
+        error: "create_failed", 
+        details: responseData 
+      }), { 
         status: response.status,
-        headers: corsHeaders
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const data = await response.json();
-    console.log("✅ [create-event] Event created successfully:", data);
+    console.log("✅ [create-event] Event created successfully:", responseData);
     
-    return new Response(JSON.stringify(data.data || data), {
+    return new Response(JSON.stringify({ 
+      event: responseData.data || responseData 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error("❌ [create-event] Unexpected error:", error);
-    return new Response(`Error: ${error.message}`, { 
+    return new Response(JSON.stringify({ 
+      error: "internal_error", 
+      message: error.message 
+    }), { 
       status: 500,
-      headers: corsHeaders
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
