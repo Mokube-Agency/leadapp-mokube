@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Mail } from 'lucide-react';
 
 export function AuthPage() {
   const [email, setEmail] = useState('');
@@ -58,6 +59,27 @@ export function AuthPage() {
     }
   };
 
+  const handleSocialLogin = async (provider: 'google' | 'azure') => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Fout",
+        description: error.message,
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -71,7 +93,40 @@ export function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
+          {/* Social Login Buttons */}
+          <div className="space-y-3 mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleSocialLogin('google')}
+              disabled={loading}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Inloggen met Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleSocialLogin('azure')}
+              disabled={loading}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Inloggen met Microsoft
+            </Button>
+          </div>
+
+          <div className="relative">
+            <Separator />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-background px-2 text-muted-foreground text-sm">
+                of met email
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-4 mt-6">
             <div>
               <Input
                 type="email"
