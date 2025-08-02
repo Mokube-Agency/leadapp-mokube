@@ -122,8 +122,9 @@ serve(async (req) => {
       .single();
 
     if (org?.ai_paused) {
-      console.log('AI is paused for organization');
-      return new Response("AI paused", { headers: corsHeaders });
+      console.log('AI is gepauzeerd – geen reply versturen');
+      // Return 204 No Content to silently handle without sending any message
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     // 4) Get conversation history for context
