@@ -115,7 +115,7 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex flex-col h-full">
 
       {/* Messages */}
       {(overrideMessages || messages).length === 0 ? (
@@ -126,11 +126,13 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
           </div>
         </div>
       ) : (
-        <MessageList 
-          messages={overrideMessages || messages} 
-          onLoadMore={() => loadMessages(false)}
-          hasMore={hasMore}
-        />
+        <div className="flex-1 overflow-y-auto">
+          <MessageList 
+            messages={overrideMessages || messages} 
+            onLoadMore={() => loadMessages(false)}
+            hasMore={hasMore}
+          />
+        </div>
       )}
 
       {/* Message Input */}
