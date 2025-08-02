@@ -18,8 +18,14 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const body = await req.json();
     const { grant_id, calendar_id, ...eventData } = body;
+    
+    console.log("Creating event with grant_id:", grant_id, "calendar_id:", calendar_id);
     
     if (!grant_id || !calendar_id) {
       return new Response("grant_id and calendar_id are required", { status: 400 });
@@ -28,6 +34,29 @@ serve(async (req) => {
     const nylasApiKey = Deno.env.get("NYLAS_CLIENT_SECRET");
     if (!nylasApiKey) {
       return new Response("Nylas API key not configured", { status: 500 });
+    }
+
+    // First check if the grant is still valid by testing the calendars endpoint
+    const testResponse = await fetch(
+      `https://api.us.nylas.com/v3/grants/${grant_id}/calendars`,
+      {
+        headers: {
+          'Authorization': `Bearer ${nylasApiKey}`,
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    if (!testResponse.ok) {
+      console.error("Grant validation failed:", await testResponse.text());
+      
+      // Mark the Nylas account as inactive if grant is invalid
+      await supabase
+        .from('nylas_accounts')
+        .update({ is_active: false })
+        .eq('nylas_grant_id', grant_id);
+        
+      return new Response("Calendar connection is no longer valid. Please reconnect your calendar.", { status: 401 });
     }
 
     const response = await fetch(
@@ -46,10 +75,20 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Nylas API error:", errorText);
+      
+      // If this is also a 404, mark account as inactive
+      if (response.status === 404) {
+        await supabase
+          .from('nylas_accounts')
+          .update({ is_active: false })
+          .eq('nylas_grant_id', grant_id);
+      }
+      
       return new Response(`Nylas API error: ${errorText}`, { status: response.status });
     }
 
     const data = await response.json();
+    console.log("Event created successfully:", data);
     
     return new Response(JSON.stringify(data.data || data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

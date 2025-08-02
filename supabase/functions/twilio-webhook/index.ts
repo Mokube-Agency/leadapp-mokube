@@ -272,10 +272,12 @@ serve(async (req) => {
                 reply = `Perfect! Je afspraak is ingepland voor ${args.date} van ${args.start_time} tot ${args.end_time}. We zien je dan graag!`;
               }
             } else {
-              reply = "Sorry, er zijn geen kalenders beschikbaar om een afspraak in te plannen.";
+              console.error('No calendars available for grant:', nylasAccount.nylas_grant_id);
+              reply = "Sorry, er zijn geen kalenders beschikbaar om een afspraak in te plannen. Mogelijk moet je je agenda opnieuw koppelen.";
             }
           } else {
-            reply = "Sorry, er is geen kalender gekoppeld om afspraken in te plannen.";
+            console.error('No active Nylas account found for organization:', contact.organization_id);
+            reply = "Sorry, er is geen kalender gekoppeld om afspraken in te plannen. Koppel eerst je agenda om afspraken te kunnen maken.";
           }
         } catch (error) {
           console.error('Error processing appointment:', error);
