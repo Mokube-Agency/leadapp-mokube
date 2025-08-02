@@ -117,7 +117,20 @@ serve(async (req) => {
       return new Response('Database error', { status: 500, headers: corsHeaders });
     }
 
-    // 3) Check if AI is paused for this organization
+    // 3) Check calendar connection in profile for auto-pause
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("nylas_connected")
+      .eq("organization_id", contact.organization_id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!profile?.nylas_connected) {
+      console.log('Auto-pauze: geen kalender gekoppeld');
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // 4) Check if AI is paused for this organization
     const { data: org } = await supabase
       .from("organizations")
       .select("ai_paused")
@@ -125,12 +138,11 @@ serve(async (req) => {
       .single();
 
     if (org?.ai_paused) {
-      console.log('AI is gepauzeerd – geen reply versturen');
-      // Return 204 No Content to silently handle without sending any message
+      console.log('AI gepauzeerd door user toggle');
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // 4) Get conversation history for context
+    // 5) Get conversation history for context
     const { data: messages } = await supabase
       .from("messages")
       .select("role, body")
@@ -198,7 +210,7 @@ serve(async (req) => {
       }
     ];
 
-    // 5) Generate AI response with function calling
+    // 6) Generate AI response with function calling
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -301,7 +313,7 @@ serve(async (req) => {
       reply = message?.content || "Sorry, ik kon geen antwoord genereren.";
     }
 
-    // 6) Store AI response
+    // 7) Store AI response
     const { error: aiMessageError } = await supabase
       .from("messages")
       .insert({
@@ -315,7 +327,7 @@ serve(async (req) => {
       console.error('Error storing AI message:', aiMessageError);
     }
 
-    // 7) Send response via Twilio
+    // 8) Send response via Twilio
     const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
     const params = new URLSearchParams({
       From: TWILIO_WHATSAPP_NUMBER || '',
