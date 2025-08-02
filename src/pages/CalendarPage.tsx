@@ -317,35 +317,6 @@ export default function CalendarPage() {
         </Card>
       )}
 
-      {/* Calendar info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Verbonden Kalenders ({calendars.length})
-          </CardTitle>
-          {nylasAccount && (
-            <CardDescription>
-              Account: {nylasAccount.email_address} ({nylasAccount.provider})
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {calendars.map((calendar) => (
-              <Badge 
-                key={calendar.id} 
-                variant={calendar.is_primary ? "default" : "secondary"}
-                className="text-xs"
-              >
-                {calendar.name}
-                {calendar.is_primary && " (Primair)"}
-                {calendar.read_only && " (Alleen lezen)"}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

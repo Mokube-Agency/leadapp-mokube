@@ -1,42 +1,115 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, User, Mail, Unlink } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Settings, ExternalLink, Unlink2, User, Mail, Unlink } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Calendar {
+  id: string;
+  name: string;
+  description?: string;
+  timezone?: string;
+  is_primary?: boolean;
+  read_only?: boolean;
+}
+
+interface Profile {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  nylas_connected: boolean;
+  organization_id: string;
+}
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [grantId, setGrantId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-          
-        if (error) {
-          console.error("Error loading profile:", error);
-        } else {
-          setProfile(data);
-        }
-      } catch (error) {
-        console.error("Error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
+    if (user) {
+      loadProfile();
+    }
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.nylas_connected) {
+      loadNylasAccount();
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!grantId) return;
+    loadCalendars();
+  }, [grantId]);
+
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, user_id, display_name, nylas_connected, organization_id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading profile:', error);
+        return;
+      }
+
+      setProfile(data);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadNylasAccount = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('nylas_accounts')
+        .select('nylas_grant_id')
+        .eq('user_id', user?.id)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (error) {
+        console.error('Error loading Nylas account:', error);
+        return;
+      }
+
+      if (data && data.length > 0 && data[0].nylas_grant_id) {
+        setGrantId(data[0].nylas_grant_id);
+      }
+    } catch (error) {
+      console.error('Error loading Nylas account:', error);
+    }
+  };
+
+  const loadCalendars = async () => {
+    if (!grantId) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('get-calendars', {
+        body: { grant_id: grantId }
+      });
+
+      if (error) {
+        console.error('Error loading calendars:', error);
+        return;
+      }
+
+      setCalendars(data || []);
+    } catch (error) {
+      console.error('Error loading calendars:', error);
+    }
+  };
 
   const handleConnectCalendar = async () => {
     if (!user) return;
@@ -72,7 +145,9 @@ export default function SettingsPage() {
           variant: "destructive",
         });
       } else {
-        setProfile(prev => ({ ...prev, nylas_connected: false }));
+        setProfile(prev => prev ? { ...prev, nylas_connected: false } : null);
+        setCalendars([]);
+        setGrantId(null);
         toast({
           title: "Succes",
           description: "Agenda succesvol ontkoppeld.",
@@ -151,14 +226,14 @@ export default function SettingsPage() {
             Kalenderintegratie
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Verbind je agenda om afspraken te synchroniseren en te beheren vanuit Leadapp.
-            </p>
-            
-            {profile?.nylas_connected ? (
-              <div className="space-y-2">
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Verbind je agenda om afspraken te synchroniseren en te beheren vanuit Leadapp.
+          </p>
+          
+          {profile?.nylas_connected ? (
+            <div className="space-y-4">
+              <div className="flex gap-2">
                 <Button
                   disabled
                   variant="secondary"
@@ -176,16 +251,51 @@ export default function SettingsPage() {
                   Ontkoppel Agenda
                 </Button>
               </div>
-            ) : (
-              <Button
-                onClick={handleConnectCalendar}
-                className="flex items-center gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Verbind Agenda
-              </Button>
-            )}
-          </div>
+
+              {calendars.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3">Verbonden kalenders ({calendars.length})</h4>
+                  <div className="space-y-2">
+                    {calendars.map((calendar) => (
+                      <div key={calendar.id} className="p-3 rounded-lg border">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-medium">{calendar.name}</h5>
+                            {calendar.description && (
+                              <p className="text-sm text-muted-foreground">{calendar.description}</p>
+                            )}
+                            {calendar.timezone && (
+                              <p className="text-sm text-muted-foreground">Tijdzone: {calendar.timezone}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            {calendar.is_primary && (
+                              <Badge variant="default" className="text-xs">
+                                Primair
+                              </Badge>
+                            )}
+                            {calendar.read_only && (
+                              <Badge variant="secondary" className="text-xs">
+                                Alleen lezen
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Button
+              onClick={handleConnectCalendar}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Verbind Agenda
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
