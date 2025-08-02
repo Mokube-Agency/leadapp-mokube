@@ -228,10 +228,13 @@ serve(async (req) => {
     // Check if AI wants to call a function
     if (message?.function_call) {
       const functionName = message.function_call.name;
+      console.log("🚀 AI called function:", functionName);
+      console.log("🚀 Function arguments:", message.function_call.arguments);
       
       if (functionName === "create_appointment") {
         try {
           const args = JSON.parse(message.function_call.arguments);
+          console.log("📅 Parsed event data:", args);
           
           // Get user's Nylas account for appointment creation
           const { data: nylasAccount } = await supabase
@@ -242,53 +245,68 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
 
-          if (nylasAccount?.nylas_grant_id) {
+          if (!nylasAccount?.nylas_grant_id) {
+            console.error("❌ No active Nylas account found for organization:", contact.organization_id);
+            reply = "Sorry, er is geen kalender gekoppeld om afspraken in te plannen. Koppel eerst je agenda om afspraken te kunnen maken.";
+          } else {
+            console.log("📞 Getting calendars for grant:", nylasAccount.nylas_grant_id);
+            
             // Get available calendars
-            const { data: calendars } = await supabase.functions.invoke('get-calendars', {
+            const { data: calendars, error: calendarsError } = await supabase.functions.invoke('get-calendars', {
               body: { grant_id: nylasAccount.nylas_grant_id }
             });
 
-            if (calendars && calendars.length > 0) {
+            if (calendarsError || !calendars || calendars.length === 0) {
+              console.error("❌ No calendars available for grant:", nylasAccount.nylas_grant_id, calendarsError);
+              reply = "Sorry, er zijn geen kalenders beschikbaar om een afspraak in te plannen. Mogelijk moet je je agenda opnieuw koppelen.";
+            } else {
               // Use first available calendar
               const calendarId = calendars[0].id;
+              console.log("📅 Using calendar:", calendarId);
               
-              // Create the appointment
-              const startDateTime = new Date(`${args.date}T${args.start_time}:00`);
-              const endDateTime = new Date(`${args.date}T${args.end_time}:00`);
-              
-              const { data: eventData, error: eventError } = await supabase.functions.invoke('create-event', {
-                body: {
-                  grant_id: nylasAccount.nylas_grant_id,
-                  calendar_id: calendarId,
-                  title: `Afspraak: ${contact.full_name}`,
-                  when: {
-                    start_time: Math.floor(startDateTime.getTime() / 1000),
-                    end_time: Math.floor(endDateTime.getTime() / 1000)
-                  }
-                }
-              });
+              // Prepare create-event payload with ALL required fields
+              const createEventPayload = {
+                grant_id: nylasAccount.nylas_grant_id,
+                calendar_id: calendarId,
+                title: `Afspraak: ${contact.full_name}`,
+                date: args.date,
+                start_time: args.start_time,
+                end_time: args.end_time
+              };
 
-              if (eventError) {
-                console.error('Error creating event:', eventError);
-                reply = "Sorry, er ging iets mis bij het inplannen van je afspraak. Probeer het later opnieuw.";
+              console.log("🛠️ [twilio-webhook] create-event payload:", createEventPayload);
+
+              // Validate all required fields are present
+              const requiredFields = ['grant_id', 'calendar_id', 'title', 'date', 'start_time', 'end_time'];
+              const missingFields = requiredFields.filter(field => !createEventPayload[field]);
+              
+              if (missingFields.length > 0) {
+                console.error("❌ Missing required fields for create-event:", missingFields);
+                reply = "Sorry, er ontbreken gegevens om de afspraak in te plannen. Probeer het opnieuw.";
               } else {
-                reply = `Perfect! Je afspraak is ingepland voor ${args.date} van ${args.start_time} tot ${args.end_time}. We zien je dan graag!`;
+                // Create the event with all required fields
+                const { data: eventData, error: eventError } = await supabase.functions.invoke('create-event', {
+                  body: createEventPayload
+                });
+
+                if (eventError) {
+                  console.error("❌ Error creating event:", eventError);
+                  reply = "Sorry, er ging iets mis bij het inplannen van je afspraak. Probeer het later opnieuw.";
+                } else {
+                  console.log("✅ Event created successfully:", eventData);
+                  reply = `Perfect! Je afspraak is ingepland voor ${args.date} van ${args.start_time} tot ${args.end_time}. We zien je dan graag!`;
+                }
               }
-            } else {
-              console.error('No calendars available for grant:', nylasAccount.nylas_grant_id);
-              reply = "Sorry, er zijn geen kalenders beschikbaar om een afspraak in te plannen. Mogelijk moet je je agenda opnieuw koppelen.";
             }
-          } else {
-            console.error('No active Nylas account found for organization:', contact.organization_id);
-            reply = "Sorry, er is geen kalender gekoppeld om afspraken in te plannen. Koppel eerst je agenda om afspraken te kunnen maken.";
           }
         } catch (error) {
-          console.error('Error processing appointment:', error);
+          console.error("❌ Error processing appointment:", error);
           reply = "Sorry, er ging iets mis bij het verwerken van je afspraak.";
         }
       }
     } else {
       // Regular AI response
+      console.log("💬 AI provided text response:", message?.content);
       reply = message?.content || "Sorry, ik kon geen antwoord genereren.";
     }
 
