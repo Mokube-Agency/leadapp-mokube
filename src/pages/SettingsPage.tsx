@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Settings, ExternalLink, Unlink2, User, Mail, Unlink } from "lucide-react";
+import { Calendar, Settings, ExternalLink, Unlink2, User, Mail, Unlink, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Calendar {
@@ -164,6 +164,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Uitgelogd",
+        description: "Je bent succesvol uitgelogd.",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het uitloggen.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -297,6 +314,28 @@ export default function SettingsPage() {
               Verbind Agenda
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogOut className="h-5 w-5" />
+            Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Uitloggen uit je account.
+          </p>
+          <Button
+            onClick={handleLogout}
+            variant="destructive"
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Uitloggen
+          </Button>
         </CardContent>
       </Card>
     </div>
