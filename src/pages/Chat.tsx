@@ -2,18 +2,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { ContactsList } from '@/components/chat/ContactsList';
 import { ChatWindow } from '@/components/chat/ChatWindow';
 import { Contact, Message } from '@/types/database';
-import { MessageSquare, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, Trash2, Pause, Play } from 'lucide-react';
+import { MessageSquare, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useAiPause } from '@/hooks/useAiPause';
 
 export default function Chat() {
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sortBy, setSortBy] = useState<'time-asc' | 'time-desc' | 'alpha-asc' | 'alpha-desc'>('time-desc');
   const { toast } = useToast();
-  const { aiPaused, toggleAiPause } = useAiPause();
 
   // Sorted messages based on selected sort option
   const sortedMessages = useMemo(() => {
@@ -80,27 +77,6 @@ export default function Chat() {
 
   return (
     <div className="h-screen flex relative">
-      {/* Fixed AI Control Button */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="flex items-center gap-2">
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-            aiPaused 
-              ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
-              : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
-          }`}>
-            {aiPaused ? 'AI Gepauzeerd' : 'AI Actief'}
-          </div>
-          <Button
-            onClick={toggleAiPause}
-            variant={aiPaused ? "default" : "outline"}
-            size="sm"
-            className="flex items-center gap-2 shadow-lg"
-          >
-            {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-            {aiPaused ? "Activeren" : "Pauzeren"}
-          </Button>
-        </div>
-      </div>
 
       <ContactsList
         activeContactId={activeContact?.id}

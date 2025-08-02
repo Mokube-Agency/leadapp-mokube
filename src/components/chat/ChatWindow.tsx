@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Bot } from 'lucide-react';
+import { Bot, Pause, Play } from 'lucide-react';
 import { Contact, Message } from '@/types/database';
 import { MessageInput } from './MessageInput';
 import MessageList from './MessageList';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAiPause } from '@/hooks/useAiPause';
+import { Button } from '@/components/ui/button';
 
 interface ChatWindowProps {
   contact: Contact;
@@ -18,6 +20,7 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const { toast } = useToast();
+  const { aiPaused, toggleAiPause } = useAiPause();
   
   const PAGE_SIZE = 50;
 
@@ -116,6 +119,30 @@ export function ChatWindow({ contact, overrideMessages, onMessagesChange }: Chat
 
   return (
     <div className="flex flex-col h-full">
+      {/* Navigation Bar */}
+      <nav className="flex items-center justify-between bg-background border-b px-4 py-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">{contact.full_name}</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+            aiPaused 
+              ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' 
+              : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+          }`}>
+            {aiPaused ? 'AI Gepauzeerd' : 'AI Actief'}
+          </div>
+          <Button
+            onClick={toggleAiPause}
+            variant={aiPaused ? "default" : "outline"}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {aiPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {aiPaused ? "Activeren" : "Pauzeren"}
+          </Button>
+        </div>
+      </nav>
 
       {/* Messages */}
       {(overrideMessages || messages).length === 0 ? (
