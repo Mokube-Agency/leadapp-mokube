@@ -78,11 +78,16 @@ export default function CalendarPage() {
 
   const loadGoogleTokens = async () => {
     try {
+      console.log('🔍 [CalendarPage] Checking Google tokens for user:', user?.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('google_refresh_token')
         .eq('user_id', user?.id)
         .single();
+
+      console.log('🔍 [CalendarPage] Profile data:', data);
+      console.log('🔍 [CalendarPage] Profile error:', error);
 
       if (error) {
         console.error('Error loading Google tokens:', error);
@@ -90,7 +95,10 @@ export default function CalendarPage() {
       }
 
       if (data?.google_refresh_token) {
+        console.log('✅ [CalendarPage] Found Google refresh token');
         setNylasAccount({ nylas_grant_id: 'google', email_address: user?.email });
+      } else {
+        console.log('❌ [CalendarPage] No Google refresh token found');
       }
     } catch (error) {
       console.error('Error loading Google tokens:', error);
