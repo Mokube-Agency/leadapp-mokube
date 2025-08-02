@@ -13,14 +13,21 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== 'GET') {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
   try {
-    const url = new URL(req.url);
-    const grantId = url.searchParams.get("grant_id");
-    const calendarId = url.searchParams.get("calendar_id");
+    let grantId: string;
+    let calendarId: string;
+
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      grantId = url.searchParams.get("grant_id") || '';
+      calendarId = url.searchParams.get("calendar_id") || '';
+    } else if (req.method === 'POST') {
+      const body = await req.json();
+      grantId = body.grant_id || '';
+      calendarId = body.calendar_id || '';
+    } else {
+      return new Response("Method not allowed", { status: 405 });
+    }
     
     if (!grantId || !calendarId) {
       return new Response("grant_id and calendar_id parameters are required", { status: 400 });
