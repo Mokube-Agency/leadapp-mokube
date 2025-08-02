@@ -190,7 +190,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6 h-full overflow-y-auto">
       <h1 className="text-3xl font-bold text-foreground">Instellingen</h1>
       
       <Card>
