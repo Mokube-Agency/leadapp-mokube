@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
+console.log('🚀 [AuthListener] Module loaded - setting up auth state listener');
+
 // Auto-capture and save OAuth tokens when user signs in with social providers
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log('🔍 [AuthListener] Auth state change:', event, session?.user?.id);
