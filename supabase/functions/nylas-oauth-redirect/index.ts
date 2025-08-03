@@ -219,37 +219,46 @@ serve(async (req) => {
         })
         .eq("user_id", userId);
 
-      // Create access token for auto-login
-      const { data: session, error: sessionError } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: tokenData.email_address,
-        options: {
-          redirectTo: 'https://preview--leadapp-mokube.lovable.app/'
+      // Create a direct login session using Supabase Admin API
+      console.log("🔐 Creating direct login session for user:", userId);
+      
+      try {
+        // Sign in the user directly using admin API
+        const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+          type: 'magiclink',
+          email: tokenData.email_address
+        });
+
+        if (sessionError) {
+          console.error("Failed to generate login link:", sessionError);
+        }
+        
+        console.log("✅ OAuth flow completed successfully for user:", userId);
+        
+        // Use magic link for instant login
+        if (sessionData?.properties?.action_link) {
+          console.log("🔗 Redirecting with magic link for auto-login");
+          return new Response(null, {
+            status: 302,
+            headers: {
+              ...corsHeaders,
+              'Location': sessionData.properties.action_link
+            }
+          });
+        }
+      } catch (linkError) {
+        console.error("Error generating magic link:", linkError);
+      }
+      
+      // Fallback: redirect to main app
+      console.log("⚠️ Using fallback redirect to main app");
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': 'https://preview--leadapp-mokube.lovable.app/'
         }
       });
-
-      if (sessionError) {
-        console.error("Failed to generate session:", sessionError);
-      }
-
-      console.log("✅ OAuth flow completed successfully for user:", userId);
-      
-      // Redirect to main app with success
-      let redirectUrl = 'https://preview--leadapp-mokube.lovable.app/';
-      
-      if (session?.properties?.action_link) {
-        // Use the magic link for auto-login
-        redirectUrl = session.properties.action_link;
-      }
-
-      // Redirect back to app
-        return new Response(null, {
-          status: 302,
-          headers: {
-            ...corsHeaders,
-            'Location': redirectUrl
-          }
-        });
 
     } catch (error) {
       console.error("OAuth callback error:", error);

@@ -12,6 +12,7 @@ export function AuthPage() {
   // Redirect authenticated users to the main page
   useEffect(() => {
     if (user) {
+      console.log("✅ User authenticated, redirecting to main app");
       navigate("/");
     }
   }, [user, navigate]);
