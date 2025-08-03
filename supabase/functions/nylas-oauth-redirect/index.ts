@@ -68,26 +68,101 @@ serve(async (req) => {
         }
       }
 
-      // Sla tokens op in Supabase per user
+      // Sla tokens op in Supabase en creëer/login user
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Haal gebruikersprofiel op om organization_id te krijgen
-      const { data: profile } = await supabase
+      // Get or create user profile from email
+      let userId = state; // If state contains user_id, use it
+      
+      if (tokenData.email_address && !state) {
+        // Try to find existing user by email or create new one
+        const { data: existingUser } = await supabase.auth.admin.listUsers();
+        const foundUser = existingUser.users.find(u => u.email === tokenData.email_address);
+        
+        if (foundUser) {
+          userId = foundUser.id;
+        } else {
+          // Create new user in Supabase Auth
+          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+            email: tokenData.email_address,
+            email_confirm: true
+          });
+          
+          if (createError || !newUser.user) {
+            console.error("Failed to create user:", createError);
+            return new Response("Failed to create user account", { status: 500 });
+          }
+          
+          userId = newUser.user.id;
+        }
+      }
+
+      if (!userId) {
+        return new Response("Unable to determine user identity", { status: 400 });
+      }
+
+      // Get or create organization for this user
+      let { data: profile } = await supabase
         .from("profiles")
-        .select("organization_id")
-        .eq("user_id", state)
+        .select("organization_id, id")
+        .eq("user_id", userId)
         .single();
 
+      let organizationId = profile?.organization_id;
+
       if (!profile) {
-        return new Response("User profile not found", { status: 404 });
+        // Create organization first
+        const { data: newOrg, error: orgError } = await supabase
+          .from("organizations")
+          .insert({ name: `${tokenData.email_address || 'User'}'s Organization` })
+          .select()
+          .single();
+
+        if (orgError || !newOrg) {
+          console.error("Failed to create organization:", orgError);
+          return new Response("Failed to create organization", { status: 500 });
+        }
+
+        organizationId = newOrg.id;
+
+        // Create profile
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: userId,
+            organization_id: organizationId,
+            display_name: tokenData.email_address?.split('@')[0],
+            nylas_connected: true,
+            nylas_grant_id: tokenData.grant_id
+          });
+
+        if (profileError) {
+          console.error("Failed to create profile:", profileError);
+          return new Response("Failed to create profile", { status: 500 });
+        }
+      } else {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ 
+            nylas_connected: true,
+            nylas_grant_id: tokenData.grant_id
+          })
+          .eq("user_id", userId);
+
+        if (updateError) {
+          console.error("Failed to update profile:", updateError);
+        }
+        
+        organizationId = profile.organization_id;
       }
 
       const { error } = await supabase.from("nylas_accounts").upsert({
-        user_id: state,
-        organization_id: profile.organization_id,
+        user_id: userId,
+        organization_id: organizationId,
         nylas_grant_id: tokenData.grant_id,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
@@ -142,21 +217,37 @@ serve(async (req) => {
           nylas_grant_id: tokenData.grant_id,
           default_calendar_id: defaultCalendarId
         })
-        .eq("user_id", state);
+        .eq("user_id", userId);
 
-      if (profileError) {
-        console.error("Profile update error:", profileError);
-        return new Response(`Profile update error: ${profileError.message}`, { status: 500 });
+      // Create access token for auto-login
+      const { data: session, error: sessionError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: tokenData.email_address,
+        options: {
+          redirectTo: 'https://preview--leadapp-mokube.lovable.app/'
+        }
+      });
+
+      if (sessionError) {
+        console.error("Failed to generate session:", sessionError);
       }
 
-      console.log("✅ OAuth flow completed successfully for user:", state);
+      console.log("✅ OAuth flow completed successfully for user:", userId);
+      
+      // Redirect to main app with success
+      let redirectUrl = 'https://preview--leadapp-mokube.lovable.app/';
+      
+      if (session?.properties?.action_link) {
+        // Use the magic link for auto-login
+        redirectUrl = session.properties.action_link;
+      }
 
-      // Redirect terug naar settings pagina met success
+      // Redirect back to app
         return new Response(null, {
           status: 302,
           headers: {
             ...corsHeaders,
-            'Location': `https://preview--leadapp-mokube.lovable.app/settings?connected=success`
+            'Location': redirectUrl
           }
         });
 
