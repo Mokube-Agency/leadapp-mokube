@@ -59,6 +59,3 @@ verify_jwt = false
 
 [functions.calendar-fetch]
 verify_jwt = true
-
-[functions.nylas-sso-init]
-verify_jwt = false
