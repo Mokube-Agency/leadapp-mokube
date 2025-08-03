@@ -230,42 +230,15 @@ serve(async (req) => {
         })
         .eq("user_id", userId);
 
-      // Create a session token for the user that can be used on the frontend
-      console.log("🔐 Creating session token for user:", userId);
-      
-      // Generate access and refresh tokens
-      const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-        type: 'invite',
-        email: authUser.email!,
-        options: {
-          redirectTo: 'https://preview--leadapp-mokube.lovable.app/?auth=success'
-        }
-      });
-
-      if (sessionError) {
-        console.error("Failed to generate session:", sessionError);
-        // Fallback: just redirect to app
-        return new Response(null, {
-          status: 302,
-          headers: {
-            ...corsHeaders,
-            'Location': 'https://preview--leadapp-mokube.lovable.app/?nylas=connected'
-          }
-        });
-      }
-
+      // Simpele redirect naar settings pagina
       console.log("✅ OAuth flow completed successfully for user:", userId);
-      
-      // Use the generated link for authentication
-      const redirectUrl = sessionData?.properties?.action_link || 'https://preview--leadapp-mokube.lovable.app/?nylas=connected';
-      
-      console.log("🔗 Redirecting to:", redirectUrl);
+      console.log("🔗 Redirecting to settings page");
       
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': redirectUrl
+          'Location': 'https://preview--leadapp-mokube.lovable.app/settings?nylas=connected'
         }
       });
 

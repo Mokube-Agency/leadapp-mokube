@@ -39,6 +39,30 @@ export default function SettingsPage() {
   }, [user]);
 
   useEffect(() => {
+    // Check for Nylas connection success parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const nylasParam = urlParams.get('nylas');
+    
+    if (nylasParam === 'connected') {
+      console.log("🔗 Nylas connection detected, refreshing profile...");
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Refresh profile data
+      if (user) {
+        setTimeout(() => {
+          loadProfile();
+        }, 1000);
+      }
+      
+      toast({
+        title: "Succes",
+        description: "Nylas kalender succesvol verbonden!",
+      });
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
     if (profile?.nylas_connected) {
       loadNylasAccount();
     }
