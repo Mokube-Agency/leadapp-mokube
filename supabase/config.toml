@@ -33,11 +33,7 @@ verify_jwt = true
 [functions.list-emails]
 verify_jwt = true
 
-[functions.nylas-sso-init]
-verify_jwt = false
-
-[functions.nylas-oauth-redirect]
-verify_jwt = false
+# Edge functions configuration can be added here as needed
 
 [functions.twilio-webhook]
 verify_jwt = false
