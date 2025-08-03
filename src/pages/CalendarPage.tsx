@@ -108,56 +108,91 @@ export default function CalendarPage() {
   };
 
   const loadCalendarEvents = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('📅 [CalendarPage] No user available for loading events');
+      return;
+    }
 
+    console.log('📅 [CalendarPage] Starting calendar events load for user:', user.id);
     setEventsLoading(true);
 
     try {
-      console.log('🔴 [CalendarPage] Calling calendar-fetch with user_id:', user.id);
+      console.log('📅 [CalendarPage] Calling calendar-fetch edge function...');
       
       const response = await supabase.functions.invoke('calendar-fetch', {
         body: { user_id: user.id }
       });
       
-      console.log('🔴 [CalendarPage] Response received:', response);
+      console.log('📅 [CalendarPage] Edge function response received:', {
+        error: response.error,
+        data: response.data,
+        hasData: !!response.data,
+        dataLength: Array.isArray(response.data) ? response.data.length : 'not array'
+      });
       
       if (response.error) {
-        console.error('🔴 [CalendarPage] Edge function error:', response.error);
+        console.error('📅 [CalendarPage] Edge function error:', response.error);
         toast({
-          title: 'Fout',
-          description: 'Kon kalender events niet laden',
+          title: 'Kalender fout',
+          description: `Kon kalender events niet laden: ${response.error.message || response.error}`,
           variant: 'destructive'
         });
         return;
       }
       
-      console.log('✅ [CalendarPage] Google calendar events:', response.data);
+      // Check if we got valid data
+      if (!response.data) {
+        console.warn('📅 [CalendarPage] No data received from edge function');
+        toast({
+          title: 'Geen data',
+          description: 'Geen kalender data ontvangen van de server',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      console.log('📅 [CalendarPage] Raw Google calendar events:', response.data);
       
       // Transform Google Calendar events to our format
-      const transformedEvents = (response.data || []).map((event: any) => ({
-        id: event.id,
-        title: event.summary || 'Geen titel',
-        description: event.description,
-        when: {
-          start_time: event.start?.dateTime ? new Date(event.start.dateTime).getTime() / 1000 : 
-                     event.start?.date ? new Date(event.start.date).getTime() / 1000 : 
-                     Date.now() / 1000,
-          end_time: event.end?.dateTime ? new Date(event.end.dateTime).getTime() / 1000 : 
-                   event.end?.date ? new Date(event.end.date).getTime() / 1000 : 
-                   (Date.now() / 1000) + 3600
-        },
-        location: event.location
-      }));
+      const transformedEvents = (Array.isArray(response.data) ? response.data : []).map((event: any, index: number) => {
+        console.log(`📅 [CalendarPage] Transforming event ${index}:`, event);
+        
+        const transformed = {
+          id: event.id || `event-${index}`,
+          title: event.summary || 'Geen titel',
+          description: event.description,
+          when: {
+            start_time: event.start?.dateTime ? new Date(event.start.dateTime).getTime() / 1000 : 
+                       event.start?.date ? new Date(event.start.date).getTime() / 1000 : 
+                       Date.now() / 1000,
+            end_time: event.end?.dateTime ? new Date(event.end.dateTime).getTime() / 1000 : 
+                     event.end?.date ? new Date(event.end.date).getTime() / 1000 : 
+                     (Date.now() / 1000) + 3600
+          },
+          location: event.location
+        };
+        
+        console.log(`📅 [CalendarPage] Transformed event ${index}:`, transformed);
+        return transformed;
+      });
       
+      console.log('📅 [CalendarPage] Final transformed events:', transformedEvents);
       setEvents(transformedEvents);
-    } catch (error) {
-      console.error('🔴 [CalendarPage] Fetch failed:', error);
+      
       toast({
-        title: 'Fout',
-        description: 'Kon kalender events niet laden',
+        title: 'Kalender geladen',
+        description: `${transformedEvents.length} agenda item(s) geladen`
+      });
+      
+    } catch (error) {
+      console.error('📅 [CalendarPage] Unexpected error during fetch:', error);
+      toast({
+        title: 'Onverwachte fout',
+        description: `Er ging iets mis: ${error.message}`,
         variant: 'destructive'
       });
     } finally {
+      console.log('📅 [CalendarPage] Finished loading calendar events');
       setEventsLoading(false);
     }
   };
