@@ -156,7 +156,7 @@ serve(async (req) => {
           status: 302,
           headers: {
             ...corsHeaders,
-            'Location': `https://daf82932-4ab5-4493-977d-249a1fbf6e33.lovableproject.com/settings?connected=success`
+            'Location': `https://preview--leadapp-mokube.lovable.app/settings?connected=success`
           }
         });
 

@@ -23,32 +23,48 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { grant_id, calendar_id, title, date, start_time, end_time } = body;
+    const { user_id, calendar_id, title, start_time, end_time } = body;
     
     console.log("🚀 [create-event] Creating event with data:", {
-      grant_id,
+      user_id,
       calendar_id,
       title,
-      date,
       start_time,
       end_time
     });
     
     // Valideer alle verplichte velden
-    if (!grant_id || !calendar_id || !title || !date || !start_time || !end_time) {
+    if (!user_id || !calendar_id || !title || !start_time || !end_time) {
       console.error("❌ [create-event] Missing required fields:", { 
-        grant_id: !!grant_id, 
+        user_id: !!user_id, 
         calendar_id: !!calendar_id, 
         title: !!title, 
-        date: !!date, 
         start_time: !!start_time, 
         end_time: !!end_time 
       });
-      return new Response("Missing required fields: grant_id, calendar_id, title, date, start_time, end_time", { 
+      return new Response("Missing required fields: user_id, calendar_id, title, start_time, end_time", { 
         status: 400, 
         headers: corsHeaders 
       });
     }
+
+    // Get user's grant_id from nylas_accounts
+    const { data: account, error: accountError } = await supabase
+      .from('nylas_accounts')
+      .select('nylas_grant_id')
+      .eq('user_id', user_id)
+      .eq('is_active', true)
+      .single();
+
+    if (accountError || !account?.nylas_grant_id) {
+      console.error("❌ [create-event] No active Nylas account found for user:", user_id);
+      return new Response("No active calendar connection found", { 
+        status: 400, 
+        headers: corsHeaders 
+      });
+    }
+
+    const grant_id = account.nylas_grant_id;
 
     const nylasApiKey = Deno.env.get("NYLAS_CLIENT_SECRET");
     if (!nylasApiKey) {
@@ -88,19 +104,15 @@ serve(async (req) => {
       });
     }
 
-    // Bereken UNIX timestamps
-    const startTs = Math.floor(new Date(`${date}T${start_time}:00`).getTime() / 1000);
-    const endTs = Math.floor(new Date(`${date}T${end_time}:00`).getTime() / 1000);
-    
-    console.log("🕐 [create-event] Converted timestamps:", { startTs, endTs });
+    console.log("🕐 [create-event] Using timestamps:", { start_time, end_time });
 
     // Verplicht `when`-object volgens Nylas v3 API
     const payload = {
       calendar_id,
       title,
       when: {
-        start_time: startTs,
-        end_time: endTs
+        start_time: start_time,
+        end_time: end_time
       }
     };
 

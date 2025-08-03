@@ -66,50 +66,77 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (user) {
-      loadGoogleTokens();
+      loadNylasAccount();
     }
   }, [user]);
 
+  const loadCalendars = async (grantId: string) => {
+    try {
+      console.log('🔍 [CalendarPage] Loading calendars for grant:', grantId);
+      
+      const response = await supabase.functions.invoke('get-calendars', {
+        body: { grant_id: grantId }
+      });
+      
+      if (response.error) {
+        console.error('Error loading calendars:', response.error);
+        return;
+      }
+      
+      console.log('✅ [CalendarPage] Calendars loaded:', response.data);
+      setCalendars(response.data || []);
+      
+      // Set first calendar as default selection
+      if (response.data && response.data.length > 0) {
+        setSelectedCalendarId(response.data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading calendars:', error);
+    }
+  };
+
   useEffect(() => {
-    if (user) {
+    if (nylasAccount) {
       loadCalendarEvents();
     }
-  }, [user, currentWeek]);
+  }, [nylasAccount, currentWeek]);
 
-  const loadGoogleTokens = async () => {
+  const loadNylasAccount = async () => {
     try {
-      console.log('🔍 [CalendarPage] Checking Google tokens for user:', user?.id);
+      console.log('🔍 [CalendarPage] Checking Nylas account for user:', user?.id);
       
       const { data, error } = await supabase
-        .from('profiles')
-        .select('google_refresh_token')
+        .from('nylas_accounts')
+        .select('nylas_grant_id, email_address, provider')
         .eq('user_id', user?.id)
+        .eq('is_active', true)
         .single();
 
-      console.log('🔍 [CalendarPage] Profile data:', data);
-      console.log('🔍 [CalendarPage] Profile error:', error);
+      console.log('🔍 [CalendarPage] Nylas account data:', data);
+      console.log('🔍 [CalendarPage] Nylas account error:', error);
 
       if (error) {
-        console.error('Error loading Google tokens:', error);
+        console.error('Error loading Nylas account:', error);
         return;
       }
 
-      if (data?.google_refresh_token) {
-        console.log('✅ [CalendarPage] Found Google refresh token');
-        setNylasAccount({ nylas_grant_id: 'google', email_address: user?.email });
+      if (data?.nylas_grant_id) {
+        console.log('✅ [CalendarPage] Found Nylas account');
+        setNylasAccount(data);
+        loadCalendars(data.nylas_grant_id);
       } else {
-        console.log('❌ [CalendarPage] No Google refresh token found');
+        console.log('❌ [CalendarPage] No Nylas account found');
       }
     } catch (error) {
-      console.error('Error loading Google tokens:', error);
+      console.error('Error loading Nylas account:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const loadCalendarEvents = async () => {
-    if (!user) {
-      console.log('📅 [CalendarPage] No user available for loading events');
+    if (!user || !nylasAccount) {
+      console.log('📅 [CalendarPage] No user or Nylas account available for loading events');
       return;
     }
 
@@ -117,10 +144,10 @@ export default function CalendarPage() {
     setEventsLoading(true);
 
     try {
-      console.log('📅 [CalendarPage] Calling calendar-fetch edge function...');
+      console.log('📅 [CalendarPage] Calling get-events edge function...');
       
-      const response = await supabase.functions.invoke('calendar-fetch', {
-        body: { user_id: user.id }
+      const response = await supabase.functions.invoke('get-events', {
+        body: { grant_id: nylasAccount.nylas_grant_id }
       });
       
       console.log('📅 [CalendarPage] Edge function response received:', {
@@ -133,15 +160,12 @@ export default function CalendarPage() {
       if (response.error) {
         console.error('📅 [CalendarPage] Edge function error:', response.error);
         
-        // Try to get more detailed error information
         let errorMessage = 'Kon kalender events niet laden';
         if (response.error.message) {
           errorMessage = response.error.message;
         } else if (typeof response.error === 'string') {
           errorMessage = response.error;
         }
-        
-        console.error('📅 [CalendarPage] Detailed error:', errorMessage);
         
         toast({
           title: 'Kalender fout',
@@ -151,40 +175,28 @@ export default function CalendarPage() {
         return;
       }
       
-      // Check if we got valid data
       if (!response.data) {
         console.warn('📅 [CalendarPage] No data received from edge function');
-        toast({
-          title: 'Geen data',
-          description: 'Geen kalender data ontvangen van de server',
-          variant: 'destructive'
-        });
+        setEvents([]);
         return;
       }
       
-      console.log('📅 [CalendarPage] Raw Google calendar events:', response.data);
+      console.log('📅 [CalendarPage] Raw Nylas calendar events:', response.data);
       
-      // Transform Google Calendar events to our format
+      // Transform Nylas events to our format
       const transformedEvents = (Array.isArray(response.data) ? response.data : []).map((event: any, index: number) => {
         console.log(`📅 [CalendarPage] Transforming event ${index}:`, event);
         
-        const transformed = {
+        return {
           id: event.id || `event-${index}`,
-          title: event.summary || 'Geen titel',
+          title: event.title || 'Geen titel',
           description: event.description,
           when: {
-            start_time: event.start?.dateTime ? new Date(event.start.dateTime).getTime() / 1000 : 
-                       event.start?.date ? new Date(event.start.date).getTime() / 1000 : 
-                       Date.now() / 1000,
-            end_time: event.end?.dateTime ? new Date(event.end.dateTime).getTime() / 1000 : 
-                     event.end?.date ? new Date(event.end.date).getTime() / 1000 : 
-                     (Date.now() / 1000) + 3600
+            start_time: event.when?.start_time || Date.now() / 1000,
+            end_time: event.when?.end_time || (Date.now() / 1000) + 3600
           },
           location: event.location
         };
-        
-        console.log(`📅 [CalendarPage] Transformed event ${index}:`, transformed);
-        return transformed;
       });
       
       console.log('📅 [CalendarPage] Final transformed events:', transformedEvents);
@@ -228,7 +240,7 @@ export default function CalendarPage() {
   };
 
   const handleCreateEvent = async () => {
-    if (!nylasAccount?.nylas_grant_id || !selectedCalendarId || !newEventTitle) {
+    if (!user || !selectedCalendarId || !newEventTitle) {
       toast({
         title: 'Fout',
         description: 'Vul alle velden in',
@@ -243,13 +255,11 @@ export default function CalendarPage() {
 
       const { data, error } = await supabase.functions.invoke('create-event', {
         body: {
-          grant_id: nylasAccount.nylas_grant_id,
+          user_id: user.id,
           calendar_id: selectedCalendarId,
           title: newEventTitle,
-          when: {
-            start_time: startDateTime.unix(),
-            end_time: endDateTime.unix()
-          }
+          start_time: startDateTime.unix(),
+          end_time: endDateTime.unix()
         }
       });
 
@@ -305,7 +315,7 @@ export default function CalendarPage() {
               Kalender
             </CardTitle>
             <CardDescription>
-              Je hebt nog geen Google kalender verbonden. Log in met Google om je kalender te verbinden.
+              Je hebt nog geen Nylas kalender verbonden. Ga naar instellingen om je kalender te verbinden.
             </CardDescription>
           </CardHeader>
         </Card>

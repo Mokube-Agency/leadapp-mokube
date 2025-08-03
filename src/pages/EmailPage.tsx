@@ -8,15 +8,15 @@ export default function EmailPage() {
   const [emails, setEmails] = useState([]);
   const [error, setError] = useState(null);
 
-  // ---------- fetch via Edge Function ----------
+  // ---------- fetch via Nylas list-emails Function ----------
   useEffect(() => {
     if (!user) return;
     
     (async () => {
       try {
-        console.log("🔴 [EmailPage] Calling gmail-fetch with user_id:", user.id);
+        console.log("🔴 [EmailPage] Calling list-emails with user_id:", user.id);
         
-        const response = await supabase.functions.invoke('gmail-fetch', {
+        const response = await supabase.functions.invoke('list-emails', {
           body: { user_id: user.id }
         });
         
@@ -28,7 +28,7 @@ export default function EmailPage() {
           return;
         }
         
-        console.log("✅ [EmailPage] Gmail emails:", response.data);
+        console.log("✅ [EmailPage] Nylas emails:", response.data);
         setEmails(response.data || []);
       } catch (e) {
         console.error("🔴 [EmailPage] Fetch failed:", e);
