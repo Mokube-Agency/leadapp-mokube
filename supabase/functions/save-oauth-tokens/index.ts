@@ -32,39 +32,76 @@ serve(async (req) => {
     
     // Parse webhook payload or direct API call
     const payload = await req.json();
-    console.log("🔍 [save-oauth-tokens] Received payload keys:", Object.keys(payload));
+    console.log("🔍 [save-oauth-tokens] Received payload structure:", {
+      keys: Object.keys(payload),
+      hasUser: !!payload.user,
+      hasSession: !!payload.session,
+      eventType: payload.event_type
+    });
 
     let user_id, provider, access_token, refresh_token, user_metadata;
 
-    // Check if this is a webhook call from Supabase Auth
-    if (payload.type === 'INSERT' && payload.table === 'users' && payload.schema === 'auth') {
-      // This is an auth webhook - extract data from the webhook payload
-      const record = payload.record;
-      user_id = record.id;
-      provider = record.app_metadata?.provider;
-      user_metadata = record.raw_user_meta_data || {};
+    // Check if this is an auth webhook from Supabase
+    if (payload.user && payload.session) {
+      // This is an auth webhook payload
+      const user = payload.user;
+      const session = payload.session;
       
-      console.log("🔍 [save-oauth-tokens] Auth webhook - provider:", provider, "user:", user_id);
+      user_id = user.id;
+      provider = user.app_metadata?.provider;
+      access_token = session.provider_token;
+      refresh_token = session.provider_refresh_token;
+      user_metadata = user.raw_user_meta_data || {};
       
-      // For auth webhooks, we don't get the tokens directly
-      // We'll create the profile but tokens will be saved by the auth listener
+      console.log("🔍 [save-oauth-tokens] Auth webhook data:", {
+        provider,
+        user_id,
+        hasAccessToken: !!access_token,
+        hasRefreshToken: !!refresh_token
+      });
+      
+      // First, ensure profile exists
       if (provider === 'google' || provider === 'azure' || provider === 'microsoft') {
-        const { error } = await supabase
+        const { error: profileError } = await supabase
           .from("profiles")
           .upsert({
             user_id: user_id,
-            display_name: user_metadata.full_name || user_metadata.name || record.email,
-            organization_id: '00000000-0000-0000-0000-000000000000' // Default - should be updated
+            display_name: user_metadata.full_name || user_metadata.name || user.email,
+            organization_id: '00000000-0000-0000-0000-000000000000' // Default org
           });
 
-        if (error) {
-          console.error("🔴 [save-oauth-tokens] Error creating profile:", error);
+        if (profileError) {
+          console.error("🔴 [save-oauth-tokens] Error creating profile:", profileError);
         } else {
-          console.log("✅ [save-oauth-tokens] Profile created for user:", user_id);
+          console.log("✅ [save-oauth-tokens] Profile created/updated for user:", user_id);
+        }
+
+        // Save OAuth tokens if available
+        if (refresh_token) {
+          const tokenUpdate: any = {};
+          
+          if (provider === "google") {
+            tokenUpdate.google_access_token = access_token;
+            tokenUpdate.google_refresh_token = refresh_token;
+          } else if (provider === "microsoft" || provider === "azure") {
+            tokenUpdate.microsoft_access_token = access_token;
+            tokenUpdate.microsoft_refresh_token = refresh_token;
+          }
+
+          const { error: tokenError } = await supabase
+            .from("profiles")
+            .update(tokenUpdate)
+            .eq("user_id", user_id);
+
+          if (tokenError) {
+            console.error("🔴 [save-oauth-tokens] Error saving tokens:", tokenError);
+          } else {
+            console.log(`✅ [save-oauth-tokens] Saved ${provider} tokens via webhook`);
+          }
         }
       }
       
-      return new Response("Profile handled", { 
+      return new Response("Auth webhook processed", { 
         status: 200,
         headers: corsHeaders 
       });

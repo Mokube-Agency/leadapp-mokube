@@ -4,22 +4,16 @@ project_id = "ipjrhuijvgchbezcjhsk"
 site_url = "https://preview--leadapp-mokube.lovable.app"
 additional_redirect_urls = ["https://preview--leadapp-mokube.lovable.app"]
 
+# Auth webhook voor OAuth token opslag
+[auth.hook.custom_access_token]
+enabled = true
+uri = "https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/save-oauth-tokens"
+
 [auth.hook.send_sms]
 enabled = false
 
 [auth.hook.send_email]
 enabled = false
-
-# Database webhook for auth events
-[database]
-  [[database.webhooks]]
-  enabled = true
-  name = "save-oauth-tokens"
-  table = "users"
-  schema = "auth"
-  events = ["INSERT"]
-  function_name = "save-oauth-tokens"
-  function_args = {}
 
 [functions.configure-sandbox]
 verify_jwt = false
