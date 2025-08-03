@@ -1,5 +1,26 @@
 project_id = "ipjrhuijvgchbezcjhsk"
 
+[auth]
+site_url = "https://preview--leadapp-mokube.lovable.app"
+additional_redirect_urls = ["https://preview--leadapp-mokube.lovable.app"]
+
+[auth.hook.send_sms]
+enabled = false
+
+[auth.hook.send_email]
+enabled = false
+
+# Database webhook for auth events
+[database]
+  [[database.webhooks]]
+  enabled = true
+  name = "save-oauth-tokens"
+  table = "users"
+  schema = "auth"
+  events = ["INSERT"]
+  function_name = "save-oauth-tokens"
+  function_args = {}
+
 [functions.configure-sandbox]
 verify_jwt = false
 
