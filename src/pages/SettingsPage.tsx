@@ -137,20 +137,8 @@ export default function SettingsPage() {
 
   const handleConnectCalendar = async () => {
     if (!user) return;
-
-    try {
-      const response = await supabase.functions.invoke('nylas-oauth-redirect', {
-        body: { user_id: user.id }
-      });
-
-      if (response.data?.auth_url) {
-        window.location.href = response.data.auth_url;
-      } else {
-        console.error('No auth URL received:', response);
-      }
-    } catch (error) {
-      console.error('Error initiating calendar connection:', error);
-    }
+    // Redirect to the OAuth init function with user ID as state
+    window.location.href = `/functions/v1/nylas-oauth-init?state=${user.id}`;
   };
 
   const handleDisconnectCalendar = async () => {
