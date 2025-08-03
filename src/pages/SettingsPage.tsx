@@ -137,8 +137,8 @@ export default function SettingsPage() {
 
   const handleConnectCalendar = async () => {
     if (!user) return;
-    // Redirect to the OAuth init function with user ID as state
-    window.location.href = `/functions/v1/nylas-oauth-init?state=${user.id}`;
+    const initUrl = `/functions/v1/nylas-oauth-init?state=${user.id}`;
+    window.location.href = initUrl;
   };
 
   const handleDisconnectCalendar = async () => {
