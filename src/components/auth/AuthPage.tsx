@@ -62,11 +62,22 @@ export function AuthPage() {
   const handleSocialLogin = async (provider: 'google' | 'azure') => {
     setLoading(true);
     try {
+      const authOptions: any = {
+        redirectTo: `${window.location.origin}/settings`
+      };
+
+      // Add Google-specific scopes for Calendar, Gmail, and Profile access
+      if (provider === 'google') {
+        authOptions.scopes = [
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/userinfo.profile'
+        ].join(' ');
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
+        options: authOptions
       });
       
       if (error) throw error;
