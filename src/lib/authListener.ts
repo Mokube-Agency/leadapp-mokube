@@ -8,7 +8,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     userId: session?.user?.id,
     provider: session?.user?.app_metadata?.provider,
     hasProviderToken: !!session?.provider_token,
-    hasRefreshToken: !!session?.provider_refresh_token
+    hasRefreshToken: !!session?.provider_refresh_token,
+    sessionKeys: session ? Object.keys(session) : null
   });
   
   if (event === "SIGNED_IN" && session?.user) {
@@ -21,31 +22,51 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       userId,
       provider,
       hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length || 0,
+      refreshTokenLength: refreshToken?.length || 0
     });
     
     // Check if this is a social login with provider tokens
     if (provider && (provider === "google" || provider === "azure" || provider === "microsoft") && refreshToken) {
       try {
-        console.log(`🔍 [AuthListener] Saving ${provider} tokens for user:`, userId);
+        console.log(`🔍 [AuthListener] Attempting to save ${provider} tokens for user:`, userId);
         
-        // Use supabase.functions.invoke for proper authentication and error handling
-        const response = await supabase.functions.invoke('save-oauth-tokens', {
-          body: {
-            user_id: userId,
-            provider: provider,
-            access_token: accessToken,
-            refresh_token: refreshToken
-          }
+        // Use direct fetch to the edge function with full URL
+        const functionUrl = `https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/save-oauth-tokens`;
+        console.log('🔍 [AuthListener] Calling function URL:', functionUrl);
+        
+        const requestBody = {
+          user_id: userId,
+          provider: provider,
+          access_token: accessToken,
+          refresh_token: refreshToken
+        };
+        
+        console.log('🔍 [AuthListener] Request body:', {
+          ...requestBody,
+          access_token: accessToken ? `${accessToken.substring(0, 10)}...` : null,
+          refresh_token: refreshToken ? `${refreshToken.substring(0, 10)}...` : null
         });
 
-        console.log('🔍 [AuthListener] Save tokens response:', {
-          error: response.error,
-          data: response.data
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwanJodWlqdmdjaGJlemNqaHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwMjg2ODIsImV4cCI6MjA2ODYwNDY4Mn0.6ixbyuGbnB0mGp2HEWEwPcQt8G_6yWsP-muuJ9Hk_rc`
+          },
+          body: JSON.stringify(requestBody)
         });
 
-        if (response.error) {
-          console.error("🔴 [AuthListener] Error saving OAuth tokens:", response.error);
+        const responseText = await response.text();
+        console.log('🔍 [AuthListener] Function response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseText
+        });
+
+        if (!response.ok) {
+          console.error("🔴 [AuthListener] Error response from save-oauth-tokens:", response.status, responseText);
         } else {
           console.log(`✅ [AuthListener] Successfully saved ${provider} tokens`);
         }
