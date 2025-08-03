@@ -132,9 +132,20 @@ export default function CalendarPage() {
       
       if (response.error) {
         console.error('📅 [CalendarPage] Edge function error:', response.error);
+        
+        // Try to get more detailed error information
+        let errorMessage = 'Kon kalender events niet laden';
+        if (response.error.message) {
+          errorMessage = response.error.message;
+        } else if (typeof response.error === 'string') {
+          errorMessage = response.error;
+        }
+        
+        console.error('📅 [CalendarPage] Detailed error:', errorMessage);
+        
         toast({
           title: 'Kalender fout',
-          description: `Kon kalender events niet laden: ${response.error.message || response.error}`,
+          description: errorMessage,
           variant: 'destructive'
         });
         return;
