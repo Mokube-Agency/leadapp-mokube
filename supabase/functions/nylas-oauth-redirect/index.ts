@@ -18,7 +18,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     const searchParams = url.searchParams;
     const code = searchParams.get("code");
-    const state = searchParams.get("state"); // bevat user_id
+    const state = searchParams.get("state");
     
     if (!code || !state) {
       return new Response("Invalid OAuth callback", { status: 400 });
@@ -26,6 +26,29 @@ serve(async (req) => {
 
     try {
       console.log("Received OAuth callback with code:", code, "and state:", state);
+
+      // Validate state and get user_id from database
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const { data: stateRecord, error: stateError } = await supabase
+        .from("oauth_states")
+        .select("user_id")
+        .eq("state", state)
+        .single();
+
+      if (stateError || !stateRecord) {
+        console.error("Invalid or expired state:", state, stateError);
+        return new Response("Invalid or expired OAuth state", { status: 400 });
+      }
+
+      const userId = stateRecord.user_id;
+      console.log("✅ Valid state found for user:", userId);
+
+      // Remove state to prevent reuse
+      await supabase.from("oauth_states").delete().eq("state", state);
 
       // Ruil code in voor access_token bij Nylas
       const tokenResponse = await fetch("https://api.us.nylas.com/v3/connect/token", {
@@ -74,8 +97,7 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Create or get user in Supabase Auth
-      let userId = state; // If state contains user_id, use it
+      // Use validated userId from state record
       let authUser = null;
       
       if (tokenData.email_address) {
