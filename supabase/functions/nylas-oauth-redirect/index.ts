@@ -19,7 +19,10 @@ serve(async (req) => {
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     
+    console.log("OAuth redirect called with code:", code ? "present" : "missing", "state:", state);
+    
     if (!code || !state) {
+      console.error("Missing code or state parameters");
       return new Response("Missing code or state", { 
         status: 400, 
         headers: corsHeaders 
@@ -27,7 +30,7 @@ serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabase = createClient(
+    const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
@@ -35,6 +38,11 @@ serve(async (req) => {
     // Exchange code for tokens with Nylas
     const nylasClientId = Deno.env.get("NYLAS_CLIENT_ID");
     const nylasClientSecret = Deno.env.get("NYLAS_CLIENT_SECRET");
+    
+    console.log("Nylas credentials available:", {
+      clientId: nylasClientId ? "present" : "missing",
+      clientSecret: nylasClientSecret ? "present" : "missing"
+    });
     
     if (!nylasClientId || !nylasClientSecret) {
       return new Response("Nylas credentials not configured", { 
@@ -44,6 +52,7 @@ serve(async (req) => {
     }
 
     const redirectUri = `${url.origin}/functions/v1/nylas-oauth-redirect`;
+    console.log("Using redirect URI:", redirectUri);
     
     const tokenResponse = await fetch('https://api.us.nylas.com/v3/connect/token', {
       method: 'POST',
@@ -69,18 +78,18 @@ serve(async (req) => {
     }
 
     const tokenData = await tokenResponse.json();
-    console.log("Token exchange successful:", tokenData);
+    console.log("Token exchange successful:", { grant_id: tokenData.grant_id });
 
     // Store in database
-    const { error: dbError } = await supabase
+    const { error: dbError } = await supabaseClient
       .from('nylas_accounts')
       .upsert({
-        user_id: state, // state contains user ID
+        user_id: state,
         nylas_grant_id: tokenData.grant_id,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         expires_at: new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString(),
-        provider: 'google', // or detect from token data
+        provider: 'google',
         is_active: true
       });
 
@@ -93,13 +102,19 @@ serve(async (req) => {
     }
 
     // Update profile to mark Nylas as connected
-    await supabase
+    const { error: profileError } = await supabaseClient
       .from('profiles')
       .update({ 
         nylas_connected: true,
         nylas_grant_id: tokenData.grant_id 
       })
       .eq('user_id', state);
+
+    if (profileError) {
+      console.error("Profile update error:", profileError);
+    }
+
+    console.log("OAuth flow completed successfully, redirecting to settings");
 
     // Redirect back to settings page
     return new Response(null, {
