@@ -14,11 +14,17 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const user_id = url.searchParams.get("user_id");
+    // Parse request body for user_id
+    const { user_id } = await req.json();
+    
+    console.log('📅 [calendar-fetch] Received request for user:', user_id);
     
     if (!user_id) {
-      return new Response("user_id parameter is required", { status: 400 });
+      console.error('📅 [calendar-fetch] No user_id provided');
+      return new Response("user_id is required", { 
+        status: 400,
+        headers: corsHeaders 
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -30,21 +36,40 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { data: profile } = await supabase
+    console.log('📅 [calendar-fetch] Looking up Google tokens for user:', user_id);
+    
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("google_refresh_token")
       .eq("user_id", user_id)
       .single();
     
+    console.log('📅 [calendar-fetch] Profile lookup result:', { hasToken: !!profile?.google_refresh_token, error: profileError });
+    
+    if (profileError) {
+      console.error('📅 [calendar-fetch] Database error:', profileError);
+      return new Response(`Database error: ${profileError.message}`, { 
+        status: 500,
+        headers: corsHeaders 
+      });
+    }
+    
     if (!profile?.google_refresh_token) {
-      return new Response("No Google tokens found", { status: 400 });
+      console.log('📅 [calendar-fetch] No Google refresh token found for user');
+      return new Response("No Google tokens found for this user", { 
+        status: 400,
+        headers: corsHeaders 
+      });
     }
 
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
     const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
     
     if (!googleClientId || !googleClientSecret) {
-      return new Response("Google OAuth credentials not configured", { status: 500 });
+      return new Response("Google OAuth credentials not configured", { 
+        status: 500,
+        headers: corsHeaders 
+      });
     }
 
     // Get access token using refresh token

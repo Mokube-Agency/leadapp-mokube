@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.save-oauth-tokens]
 verify_jwt = false
+
+[functions.calendar-fetch]
+verify_jwt = true
