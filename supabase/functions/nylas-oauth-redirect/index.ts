@@ -74,33 +74,44 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Get or create user profile from email
+      // Create or get user in Supabase Auth
       let userId = state; // If state contains user_id, use it
+      let authUser = null;
       
-      if (tokenData.email_address && !state) {
-        // Try to find existing user by email or create new one
-        const { data: existingUser } = await supabase.auth.admin.listUsers();
-        const foundUser = existingUser.users.find(u => u.email === tokenData.email_address);
+      if (tokenData.email_address) {
+        console.log("🔍 Creating/finding user for email:", tokenData.email_address);
         
-        if (foundUser) {
-          userId = foundUser.id;
-        } else {
-          // Create new user in Supabase Auth
-          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-            email: tokenData.email_address,
-            email_confirm: true
-          });
-          
-          if (createError || !newUser.user) {
+        // Try to create user in Supabase Auth
+        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+          email: tokenData.email_address,
+          email_confirm: true,
+          user_metadata: {
+            nylas_grant_id: tokenData.grant_id,
+            provider: tokenData.provider || "gmail",
+            full_name: tokenData.email_address.split('@')[0]
+          }
+        });
+        
+        if (createError) {
+          if (createError.message.includes('already registered')) {
+            // User exists, get existing user
+            console.log("✅ User already exists, fetching existing user");
+            const { data: users } = await supabase.auth.admin.listUsers();
+            authUser = users.users.find(u => u.email === tokenData.email_address);
+            userId = authUser?.id;
+          } else {
             console.error("Failed to create user:", createError);
             return new Response("Failed to create user account", { status: 500 });
           }
-          
+        } else {
+          console.log("✅ New user created successfully");
+          authUser = newUser.user;
           userId = newUser.user.id;
         }
       }
 
-      if (!userId) {
+      if (!userId || !authUser) {
+        console.error("Failed to get user ID or auth user");
         return new Response("Unable to determine user identity", { status: 400 });
       }
 
@@ -219,44 +230,42 @@ serve(async (req) => {
         })
         .eq("user_id", userId);
 
-      // Create a direct login session using Supabase Admin API
-      console.log("🔐 Creating direct login session for user:", userId);
+      // Create a session token for the user that can be used on the frontend
+      console.log("🔐 Creating session token for user:", userId);
       
-      try {
-        // Sign in the user directly using admin API
-        const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-          type: 'magiclink',
-          email: tokenData.email_address
-        });
+      // Generate access and refresh tokens
+      const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+        type: 'invite',
+        email: authUser.email!,
+        options: {
+          redirectTo: 'https://preview--leadapp-mokube.lovable.app/?auth=success'
+        }
+      });
 
-        if (sessionError) {
-          console.error("Failed to generate login link:", sessionError);
-        }
-        
-        console.log("✅ OAuth flow completed successfully for user:", userId);
-        
-        // Use magic link for instant login
-        if (sessionData?.properties?.action_link) {
-          console.log("🔗 Redirecting with magic link for auto-login");
-          return new Response(null, {
-            status: 302,
-            headers: {
-              ...corsHeaders,
-              'Location': sessionData.properties.action_link
-            }
-          });
-        }
-      } catch (linkError) {
-        console.error("Error generating magic link:", linkError);
+      if (sessionError) {
+        console.error("Failed to generate session:", sessionError);
+        // Fallback: just redirect to app
+        return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            'Location': 'https://preview--leadapp-mokube.lovable.app/?nylas=connected'
+          }
+        });
       }
+
+      console.log("✅ OAuth flow completed successfully for user:", userId);
       
-      // Fallback: redirect to main app
-      console.log("⚠️ Using fallback redirect to main app");
+      // Use the generated link for authentication
+      const redirectUrl = sessionData?.properties?.action_link || 'https://preview--leadapp-mokube.lovable.app/?nylas=connected';
+      
+      console.log("🔗 Redirecting to:", redirectUrl);
+      
       return new Response(null, {
         status: 302,
         headers: {
           ...corsHeaders,
-          'Location': 'https://preview--leadapp-mokube.lovable.app/'
+          'Location': redirectUrl
         }
       });
 

@@ -34,9 +34,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for auth success parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const authParam = urlParams.get('auth');
+    const nylasParam = urlParams.get('nylas');
+    
+    if (authParam === 'success' || nylasParam === 'connected') {
+      console.log("🔍 Auth callback detected, refreshing session...");
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Force session refresh
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log("🔍 Session after callback:", session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+      return;
+    }
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("🔍 Auth state change:", event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
