@@ -84,8 +84,31 @@ serve(async (req) => {
     
     if (!profile) {
       console.log("🔴 [calendar-fetch] No profile found for user");
-      return new Response("User profile not found", { 
-        status: 404,
+      
+      // Try to create a profile for this user
+      console.log("🔧 [calendar-fetch] Attempting to create profile for user");
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            user_id: user_id,
+            organization_id: '00000000-0000-0000-0000-000000000000' // Will need proper org assignment
+          }
+        ])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("🔴 [calendar-fetch] Failed to create profile:", createError);
+        return new Response("No profile found and could not create one. Please complete registration.", { 
+          status: 404,
+          headers: corsHeaders 
+        });
+      }
+
+      console.log("✅ [calendar-fetch] Created profile for user");
+      return new Response("Profile created but no Google calendar connected. Please connect your Google account first.", { 
+        status: 400,
         headers: corsHeaders 
       });
     }
