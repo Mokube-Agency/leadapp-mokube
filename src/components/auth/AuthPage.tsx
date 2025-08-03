@@ -17,8 +17,9 @@ export function AuthPage() {
   }, [user, navigate]);
 
   const handleNylasLogin = () => {
-    // Start the Nylas OAuth via our Edge Function
-    window.location.href = `/functions/v1/nylas-sso-init`;
+    // Start the Nylas OAuth via our Edge Function using the full Supabase URL
+    console.log("🔵 Starting Nylas login...");
+    window.location.href = "https://ipjrhuijvgchbezcjhsk.supabase.co/functions/v1/nylas-sso-init";
   };
 
   if (user) {
